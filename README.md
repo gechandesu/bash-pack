@@ -31,6 +31,41 @@ All done. Run `<script_name> --help` for check.
 
 ---
 
+## http
+
+Python 3 http.server runner.
+
+```
+Run Python 3 HTTP Server.
+
+Usage:
+    http [OPTIONS]... [ARGS]...
+
+Options:
+    -c, --cgi       run HTTP Server as CGI Server.
+    -l, --local     bind to localhost (default)
+    -b, --bind      specify host to bind
+    -d, --dir       specify directory to serve. CWD by default.
+    -f, --firefox   run Firefox.
+    -h, --help      print this message and exit.
+
+Just run 'http' to serve current working directory at
+http://localhost:8000/
+Or 'http 1234' to run HTTP server on port 1234.
+
+TODO:
+dynamic port change if port is already in use by another process.
+```
+
+Examples:
+
+```bash
+# Run HTTP Server and open http://localhost:8000/ in Firefox
+http -f
+# Run HTTP Server at 0.0.0.0:1234
+http -b 0.0.0.0:1234
+```
+
 ## prntl
 
 Print log. Simple logging tool.
