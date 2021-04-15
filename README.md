@@ -61,9 +61,9 @@ Examples:
 
 ```bash
 # Run HTTP Server and open http://localhost:8000/ in Firefox
-http -f
+$ http -f
 # Run HTTP Server at 0.0.0.0:1234
-http -b 0.0.0.0:1234
+$ http -b 0.0.0.0:1234
 ```
 
 ## prntl
@@ -96,6 +96,28 @@ $ echo 'some log string' | prntl -o /dev/null -f 'BACKUP: %time : %log'
 BACKUP: 03 Feb 2021 20:47:03 +0300 : some log string
 ```
 
+## esc
+
+```
+Escape whitespaces and specail characters in string.
+Uses 'printf %q'. Read more in 'man printf'.
+
+Usage:
+    esc [OPTIONS]... [ARGS]...
+
+Options:
+    -o, --opts      add end of the options sign (double dash). See
+                    SHELL BUILTIN COMMANDS in 'man bash' for more info.
+    -h, --help      print this message and exit.
+```
+
+Example:
+
+```bash
+$ echo 'my us$escaped \sstring --foo' | esc -o
+-- my\ us\$escaped\ \\sstring\ --foo
+```
+
 ## view
 
 ```
@@ -109,7 +131,7 @@ Options:
 Script depends on **highlight** package ([link](http://www.andre-simon.de/)):
 
 ```bash
-sudo apt install highlight
+$ sudo apt install highlight
 ```
 
 ## rng
