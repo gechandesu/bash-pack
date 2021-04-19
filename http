@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -o monitor   # for job control.
+set -o errexit   # exit if error occurs.
 
 R="\e[31m"       # red
 G="\e[32m"       # green
@@ -9,92 +10,97 @@ B="\e[34m"       # blue
 N="\e[0m"        # no color
 
 # Defaults
-DIR=$PWD
-HOST='localhost'
+HOST='0.0.0.0'
 PORT=8000
+DIR=$PWD
 
 http_print_help() {
 cat <<EOF
-Run Python 3 HTTP Server.
+Run Python 3 builtin HTTP Server.
 
 Usage:
     http [OPTIONS]... [ARGS]...
 
 Options:
-    -c, --cgi       run HTTP Server as CGI Server.
-    -l, --local     bind to localhost (default)
-    -b, --bind      specify host to bind
-    -d, --dir       specify directory to serve. CWD by default.
-    -f, --firefox   run Firefox.
-    -h, --help      print this message and exit.
+    -c, --cgi, c, cgi
+                    run as CGI Server.
+    -f, --firefox, f, ff, firefox
+                    run Firefox.
+    -h, --help, h, help
+                    print this message and exit.
 
-Just run 'http' to serve current working directory at
-http://localhost:8000/
-Or 'http 1234' to run HTTP server on port 1234.
-
-TODO:
-dynamic port change if port is already in use by another process.
+Optional arguments:
+    HOST            host to bind. Default: 0.0.0.0
+    PORT            port to bind. Default: 8000
+    DIR             directory to serve. Default: cwd.
+    
+Also you can use this syntax: HOST:PORT
 EOF
 exit 0
-}
-
-http_parse_binding() {
-    if [ "$(grep -o : <<<"$1")" ]
-    then
-        HOST="$(echo "$1" | cut -d ":" -f 1)"
-        PORT="$(echo "$1" | cut -d ":" -f 2)"
-    else
-        HOST="$1"
-        if [ "$2" ] && [ ${2:0:1} != "-" ]
-        then
-            PORT="$2"
-        fi
-    fi
 }
 
 while (( "$#" ))
 do
     case "$1" in
-        -c|--cgi)
+        -c|c|--cgi|cgi)
             CGI='--cgi';;
-        -l|--local|localhost)
-            HOST='localhost';;
-        -b|--bind)
-            if [ "$2" ] && [ ${2:0:1} != "-" ]
-            then
-                http_parse_binding "$2" "$3"
-                shift
-            else
-                echo -e "${R}$0: Error: Cannot bind to $2${N}"
-                echo -e "${Y}Binding to localhost...${N}"
-                HOST='localhost'
-            fi
+        -f|f|ff|--firefox|firefox)
+            FOX=1;;
+        -h|h|--help|help)
+            http_print_help;;
+        -*|--*)
+            echo -e "${R}$0: Error: Bad option: $1${N}" >&2
+            exit 1
             ;;
-        -d|--dir)
-            if [ -d "$2" ]
+        *)
+            if [ -d "$1" ]
             then
-                DIR="$2"
-                shift
+                # If direcory exists set it as root DIR.
+                DIR="$1"
+            elif [[ "$1" =~ ^[0-9]+$ ]]
+            then
+                # If value is integer set it as PORT.
+                PORT="$1"
+            elif [[ "$1" =~ \
+                ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
+            then
+                # Value like IPv4 address. Not necessary.
+                HOST="$1"
+            elif [[ "$1" == 'localhost' ]]
+            then
+                # Nuff said.
+                HOST="$1"
+            elif [ "$(grep -o : <<<"$1")" ]
+            then
+                # If value like 'localhost:4000'
+                HOST="$(echo "$1" | cut -d ":" -f 1)"
+                PORT="$(echo "$1" | cut -d ":" -f 2)"
             else
-                echo -e "${R}$0: Error: Bad directory: $2${N}"
+                echo -e "${R}$0: Error: Bad option: $1${N}" >&2
                 exit 1
             fi
             ;;
-        -f|--firefox)
-            FOX=1;;
-        -h|--help)
-            http_print_help;;
-        -*|--*) echo -e "${R}$0: Error: Bad option: $1${N}";;
-        *) PORT="$1";;
     esac
     shift
 done
 
-if [[ $( python3 -V | egrep -o "[[:digit:]]" | head -1 ) == '3' ]]
+while [ "$(ss -tanp | grep -o "$PORT")" ]
+do
+    if [ "$(ss -tanp | grep -o "$PORT")" ]
+    then
+        PORT_USED="$PORT"
+        let PORT++
+        # Increase port if is already in use.
+        echo -e "${R}Port $PORT_USED is already in use!${N}
+            Switching to: $PORT" | sed 's/^ *//g'
+    fi
+done
+
+if [[ "$(python3 -V)" ]]
 then
     echo -e "Serve: $DIR\t${Y}Press ^C to stop serving.${N}"
     python3 -m http.server $CGI --bind $HOST $PORT --directory $DIR &
-    [[ "$FOX" == 1 ]] && firefox http://localhost:$PORT/
+    [[ "$FOX" == 1 ]] && firefox http://$HOST:$PORT/
     fg
 else
     echo -e "${R}$0: Error: Python 3 is not available${N}"
