@@ -14,6 +14,15 @@ HOST='0.0.0.0'
 PORT=8000
 DIR=$PWD
 
+# Check Python 3
+if hash python3 2>/dev/null
+then
+    :
+else
+    echo -e "${R}$0: Error: Python 3 executable not found.${N}" >&2
+    exit 1
+fi
+
 http_print_help() {
 cat <<EOF
 Run Python 3 builtin HTTP Server.
@@ -33,7 +42,7 @@ Optional arguments:
     HOST            host to bind. Default: 0.0.0.0
     PORT            port to bind. Default: 8000
     DIR             directory to serve. Default: cwd.
-    
+
 Also you can use this syntax: HOST:PORT
 EOF
 exit 0
@@ -84,24 +93,30 @@ do
     shift
 done
 
+# Check available port and retry 3 times.
+retries=1
 while [ "$(ss -tanp | grep -o "$PORT")" ]
 do
-    if [ "$(ss -tanp | grep -o "$PORT")" ]
+    if [[ "$retries" == 4 ]]
     then
-        PORT_USED="$PORT"
-        let PORT++
-        # Increase port if is already in use.
-        echo -e "${R}Port $PORT_USED is already in use!${N}
-            Switching to: $PORT" | sed 's/^ *//g'
+        echo -e "${R}Max number of retries has been reached!${N}" >&2
+        echo "Exiting." >&2
+        exit 1
+    else
+        :
     fi
+
+    # Increase port if is already in use.
+    PORT_USED="$PORT"
+    let PORT++
+    echo -e "${R}Port $PORT_USED is already in use!${N}
+        Switching to: $PORT" | sed 's/^ *//g' >&2
+
+    let retries++
 done
 
-if [[ "$(python3 -V)" ]]
-then
-    echo -e "Serve: $DIR\t${Y}Press ^C to stop serving.${N}"
-    python3 -m http.server $CGI --bind $HOST $PORT --directory $DIR &
-    [[ "$FOX" == 1 ]] && firefox http://$HOST:$PORT/
-    fg
-else
-    echo -e "${R}$0: Error: Python 3 is not available${N}"
-fi
+# Run Python http.server.
+echo -e "Serve: $DIR\t${Y}Press ^C to stop serving.${N}"
+python3 -m http.server $CGI --bind $HOST $PORT --directory $DIR &
+[[ "$FOX" == 1 ]] && firefox http://$HOST:$PORT/
+fg
