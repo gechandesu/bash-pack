@@ -1,29 +1,105 @@
 #!/bin/bash
 
-#########################################################
+####################################################
 #
-# rng - ranges expander
+#   Based on Kusalananda's answer to question:
+#   https://superuser.com/questions/353496/
 #
-# Based on Kusalananda's answer to question:
-# https://superuser.com/questions/353496/
-#
-#########################################################
+####################################################
 
+# Default delimiters.
+DEL='\n'
+LDEL='\n'
 
-if [[ "$1" && "$(echo "$1" | awk '/[0-9]{1,}\-[0-9]{1,}/')" ]]
-then
-    echo "$1" | awk 'BEGIN { RS=","; FS="-"; ORS="" }
-    NR > 1 { print "\n" }
-    NF > 1 { for (i=$1; i<$2; ++i) { print i "\n" } print $2; next }
-    { print $1 }'
-else
-    cat <<EOF
-rng - ranges expander.
+rng_print_help() {
+cat <<EOF
+Expand ranges like "1-10" into a number series.
 
-This script expands expressions like "1-10" into a number series.
-The resulting row can be used in conjunction with the xargs or
-something else.
+Usage:
+    rng [OPTIONS]... [ARGUMENTS]...
 
-Example: rng 1-4,7,9-12
+Options:
+    -d        digits delimiter. Default: '\n'.
+    -l        lines delimiter. Default: '\n'.
+    -D        Set same delimiters for digits and lines.
+    --help    print this help message and exit.
+
+Example:
+   $ rng 1-4,7,9-12 -D ' '
+   1 2 3 4 7 9 10 11 12
 EOF
-fi
+exit 0
+}
+
+rng_expand() {
+    if [ "$1" ]
+    then
+        STR="$1"
+    else
+        STR="$(cat <&0)"
+    fi
+
+    awk -v del="$DEL" -v ldel="$LDEL" 'BEGIN { RS=","; FS="-"; ORS="" }
+    NR > 1 { print ldel }
+    NF > 1 { for (i=$1; i<$2; ++i) { print i del } print $2; next }
+    { print $1 }' <<< "${STR:0:-1}"  # Cut trailing comma.
+}
+
+[[ ! "$@" ]] && [ -t 0 ] && rng_print_help
+
+while (( "$#" ))
+do
+    case "$1" in
+        -d)
+            if [ "$2" ] && [ "${2:0:1}" != '-' ]
+            then
+                DEL="$2"
+                shift
+            else
+                echo "$0: Missing argument for $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+        -l)
+            if [ "$2" ] && [ "${2:0:1}" != '-' ]
+            then
+                LDEL="$2"
+                shift
+            else
+                echo "$0: Missing argument for $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+        -D)
+            if [ "$2" ] && [ "${2:0:1}" != '-' ]
+            then
+                DEL="$2"
+                LDEL="$2"
+                shift
+            else
+                echo "$0: Missing argument for $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+        --help)
+            rng_print_help
+            ;;
+        *)
+            if [ $(awk '/([0-9]{1,}\-[0-9]{1,})|([0-9]{1,})/' <<< "$1") ] \
+            && [ ! $(awk '/[a-zA-Z*?.+&^%$#@!/\\=><~:\[\]\(\)]/' <<< "$1") ]
+            then
+                ARGS+="$1,"
+            else
+                echo "$0: Bad argument: $1" >&2
+                echo 'The argument can contain only digits and -,' >&2
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+rng_expand "$ARGS"

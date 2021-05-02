@@ -1,67 +1,59 @@
 #!/usr/bin/env bash
 
-_show_help() {
-    echo -e "view — write highlighted text to STDOUT.\nOptions:
-    \t-l --less \tsend output to less -R
-    \t-n --lines\tless, but shows line nums (less -RN)
-    \t-h --help \tshow this help message and exit."
-    exit 0
+if ! hash highlight 2>/dev/null
+then echo "$0: highlight executable not found." >&2 && exit 1
+fi
+
+view_print_help() {
+cat << EOF
+Print highlighted text to STDOUT.
+
+Usage:
+    view [OPTIONS..] [ARGUMENTS]...
+
+Options:
+    -l --less   send output to 'less -R'
+    -n --lines  less, but shows line nums (less -RN).
+    -h --help   show this help message and exit.
+EOF
+exit 0
 }
 
-_highlight_is_not_installed() {
-    echo -e "'highlight' is not installed" && exit 1
+view_print() {
+    cat "${1:-/dev/stdin}" | highlight -O ansi
 }
 
-_no_such_file() {
-    echo "view: $1: No such file" && exit 1
-}
-
-_view() {
-    ext='sh'
-    case "$1" in
-        *.awk)                 ext='awk';;
-        *.c|*h)                ext='c';;
-        *.conf|*htaccess)      ext='conf';;
-        *.css)                 ext='css';;
-        *.docker|Dockerfile)   ext='docker';;
-        *email)                ext='email';;
-        *.go)                  ext='go';;
-        *.js)                  ext='js';;
-        *.json)                ext='json';;
-        *.md)                  ext='md';;
-        *.ru|*.icu|*.vhost)    ext='nginx';;
-        *.perl|pl)             ext='perl';;
-        *.php)                 ext='php';;
-        *.py)                  ext='python';;
-        Gemfile|Rakefile|*.rb) ext='ruby';;
-        *.sql|*.psql)          ext='sql';;
-        *.tex)                 ext='tex';;
-        *.txt)                 ext='txt';;
-        *.xml)                 ext='xml';;
-        *.yml)                 ext='yml';;
-        *)                     ext='sh';;
-    esac
-    cat "${1:-/dev/stdin}" | highlight -O ansi -S "$ext"
-}
-
-[ $(which highlight) ] || _highlight_is_not_installed
-[[ -t 0 && -z "$1" ]] && _show_help  # Do nothing if no arguments provided and no STDIN
-
-LESS_R=0
-LESS_RN=0
+# Do nothing if no arguments passed and no STDIN.
+[[ -t 0 && -z "$1" ]] && view_print_help
 
 while (( "$#" )); do
     case $1 in
-        -l|--less) LESS_R=1;;
-        -n|-ln|-nl|--lines) LESS_RN=1;;
-        -h|--help) _show_help;;
-        *) if [ -f "$1" ]; then INPUT_FILE="$1"; else _no_such_file "$1"; fi;;
+        -l|--less)
+            LESS_R=1;;
+        -n|-ln|-nl|--lines)
+            LESS_R=1
+            LESS_RN=1;;
+        -h|--help)
+            view_print_help;;
+        *)
+            if [ -f "$1" ]
+            then
+                INPUT_FILE="$1"
+            else
+                echo "$0: No such file: $1" >&2
+                exit 1
+            fi
+            ;;
     esac
     shift
 done
 
-[[ "$LESS_R" == 1 ]] && _view "$INPUT_FILE" | less -R
-[[ "$LESS_RN" == 1 ]] && _view "$INPUT_FILE" | less -RN
-[[ "$LESS_R" == 0 && "$LESS_RN" == 0 ]] && _view "$INPUT_FILE"
-
-unset LESS_R LESS_RN
+if [ "$LESS_R" ] && [ ! "$LESS_RN" ]
+then
+    view_print "$INPUT_FILE" | less -R
+elif [ "$LESS_R" ] && [ "$LESS_RN" ]
+then
+    view_print "$INPUT_FILE" | less -RN
+else
+    view_print "$INPUT_FILE"
+fi

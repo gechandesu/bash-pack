@@ -1,6 +1,6 @@
 # Handy Bash scripts
 
-## Installing
+## Installation
 
 I recomend install scripts into the home directory. Place they into `~/.local/bin`. If you don't have it, create it:
 
@@ -14,7 +14,7 @@ Give executing rights for scripts:
 chmod +x <script_name>
 ```
 
-Check your 'PATH' variable:
+Check your PATH variable:
 
 ```bash
 echo $PATH
@@ -23,11 +23,10 @@ echo $PATH
 If you don't find `/home/your_username/.local/bin` run:
 
 ```bash
-echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
-source ~/.bashrc
+echo 'export PATH+=:$HOME/.local/bin' >> ~/.bashrc && source ~/.bashrc
 ```
 
-All done. Run `<script_name> --help` for check.
+Done. Run `<script_name> --help` for check.
 
 ---
 
@@ -42,25 +41,22 @@ Usage:
     http [OPTIONS]... [ARGS]...
 
 Options:
-    -c, --cgi, c, cgi
-                    run as CGI Server.
-    -f, --firefox, f, ff, firefox
-                    run Firefox.
-    -h, --help, h, help
-                    print this message and exit.
+    --cgi, cgi      run as CGI Server.
+    -f, f           run Firefox.
+    --help, help    print this message and exit.
 
 Optional arguments:
     HOST            host to bind. Default: 0.0.0.0
     PORT            port to bind. Default: 8000
     DIR             directory to serve. Default: cwd.
-    
-Also you can use this syntax: HOST:PORT
+
+Also HOST:PORT syntax is allowed.
 ```
 
 Examples:
 
 ```bash
-# Run HTTP Server and open http://localhost:8000/ in Firefox
+# Run HTTP Server and open http://0.0.0.0:8000/ in Firefox
 $ http f
 # Run HTTP Server at 0.0.0.0:1234
 $ http 1234
@@ -71,21 +67,22 @@ $ http 1234
 Print log. Simple logging tool.
 
 ```
-prntl — print formatted log to STDOUT and log file.
-Use '--no-print' option to write to log file only.
+Print formatted log to STDOUT and log file.
 
-Usage: prntl [OPTION]... < [FILE]
+Usage:
+    prntl [OPTIONS]... [ARGUMENTS]...
+
 Options:
-    -o, --output        set log file. 'logfile' by default
+    -o, --output        set log file name. Default: printl.log.
     -f, --log-format    set log format. Formatting options:
-                            %time   time; see --time-format
-                            %log    log's string
-                            Example: prntl -f 'mylog %time : %log'
+                            %time   time; see '--time-format'.
+                            %log    log string.
+                        Example: prntl -f 'mylog %time : %log'
     -t, --time-format   set time format; see 'date --help'
                         or 'man date' for details.
                         Example: prntl -t '%D %T'
-    -c, --no-color      remove ANSI color codes from log string
-    -p, --no-print      don't print log to STDOUT
+    -c, --no-color      remove ANSI color codes from log string.
+    -p, --no-print      don't print log to STDOUT.
     -h, --help          show this help message and exit.
 ```
 
@@ -121,11 +118,15 @@ $ echo 'my un$escaped \sstring --foo' | esc -o
 ## view
 
 ```
-view — write highlighted text to STDOUT.
+Print highlighted text to STDOUT.
+
+Usage:
+    view [OPTIONS..] [ARGUMENTS]...
+
 Options:
-    	-l --less 	send output to less -R
-    	-n --lines	less, but shows line nums (less -RN)
-    	-h --help 	show this help message and exit.
+    -l --less   send output to 'less -R'
+    -n --lines  less, but shows line nums (less -RN).
+    -h --help   show this help message and exit.
 ```
 
 Script depends on **highlight** package ([link](http://www.andre-simon.de/)):
@@ -137,23 +138,18 @@ $ sudo apt install highlight
 ## rng
 
 ```
-rng - ranges expander.
+Expand ranges like "1-10" into a number series.
 
-This script expands expressions like "1-10" into a number series.
-The resulting row can be used in conjunction with the xargs or
-something else.
+Usage:
+    rng [OPTIONS]... [ARGUMENTS]...
 
-Example: rng 1-4,7,9-12
-```
+Options:
+    -d        digits delimiter. Default: '\n'.
+    -l        lines delimiter. Default: '\n'.
+    -D        Set same delimiters for digits and lines.
+    --help    print this help message and exit.
 
-Use case:
-
-```bash
-$ rng 1-4,8,13 | xargs -I {} echo file_{}
-file_1
-file_2
-file_3
-file_4
-file_8
-file_13
+Example:
+   $ rng 1-4,7,9-12 -D ' '
+   1 2 3 4 7 9 10 11 12
 ```

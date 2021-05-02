@@ -1,69 +1,122 @@
 #!/usr/bin/env bash
 
-PRINT_LOG=1
-LOG_FILE=logfile
-TIME_FORMAT="%d %b %Y %T %z"
-LOG_FORMAT="%time - %log"
-REMOVE_COLORS=0
+LOG_FILE=prntl.log
+TIME_FORMAT='%d %b %Y %T %z'
+LOG_FORMAT='%time - %log'
 
-_show_help() {
+prntl_print_help() {
 cat << EOF
-prntl — print formatted log to STDOUT and log file.
-Use '--no-print' option to write to log file only.
+Print formatted log to STDOUT and log file.
 
-Usage: prntl [OPTION]... < [FILE]
+Usage:
+    prntl [OPTIONS]... [ARGUMENTS]...
+
 Options:
-    -o, --output        set log file. 'logfile' by default
+    -o, --output        set log file name. Default: printl.log.
     -f, --log-format    set log format. Formatting options:
-                            %time   time; see --time-format
-                            %log    log's string
-                            Example: prntl -f 'mylog %time : %log'
+                            %time   time; see '--time-format'.
+                            %log    log string.
+                        Example: prntl -f 'mylog %time : %log'
     -t, --time-format   set time format; see 'date --help'
                         or 'man date' for details.
                         Example: prntl -t '%D %T'
-    -c, --no-color      remove ANSI color codes from log string
-    -p, --no-print      don't print log to STDOUT
+    -c, --no-color      remove ANSI color codes from log string.
+    -p, --no-print      don't print log to STDOUT.
     -h, --help          show this help message and exit.
 EOF
 exit 0
 }
 
-_unknown_option() {
-    echo -e "prntl: $1: Unknown option\nSee 'prntl --help'." && exit 1
-}
-
-_log_formatter() {
+prntl_log_formatter() {
     echo "$1" | sed -e "s/%time/$(date +"$TIME_FORMAT")/g; s/%log/$2/g"
 }
 
-_print_log() {
-    LOG_MESSAGE="$(cat <&0)"
+prntl_print_log() {
+    if [ "$LOG" ]
+    then
+         LOG_MESSAGE="$LOG"
+    else
+        LOG_MESSAGE="$(cat <&0)"
+    fi
 
     ESCAPED_LOG_MESSAGE="$(printf '%s\n' "$LOG_MESSAGE" | sed -e 's/[\/&]/\\&/g')"
 
-    [[ "$REMOVE_COLORS" == 1 ]] && \
+    [ "$REMOVE_COLORS" ] && \
     ESCAPED_LOG_MESSAGE="$(echo "$ESCAPED_LOG_MESSAGE" | sed 's/\x1b\[[^\x1b]*m//g')"
 
     while IFS= read -r LOG_LINE
     do
-        [[ "$PRINT_LOG" == 1 ]] && \
-        _log_formatter "$LOG_FORMAT" "$LOG_LINE" | tee -a "$LOG_FILE" || \
-        _log_formatter "$LOG_FORMAT" "$LOG_LINE" >> "$LOG_FILE"
+        if [ "$NO_PRINT" ]
+        then
+            prntl_log_formatter "$LOG_FORMAT" "$LOG_LINE" >> "$LOG_FILE"
+        else
+            prntl_log_formatter "$LOG_FORMAT" "$LOG_LINE" | tee -a "$LOG_FILE"
+        fi
     done <<< "$ESCAPED_LOG_MESSAGE"
 }
+
+if [[ ! "$@" ]] && [ -t 0 ]
+then
+    # Print help if no data sent to script.
+    prntl_print_help
+fi
 
 while (( "$#" ))
 do
     case "$1" in
-        -o|--output) LOG_FILE="$2"; shift;;
-        -f|--log-format) LOG_FORMAT="$2"; shift;;
-        -t|--time-format) TIME_FORMAT="$2"; shift;;
-        -c|--no-color) REMOVE_COLORS=1;;
-        -p|--no-print) PRINT_LOG=0;;
-        -h|--help) _show_help;;
-        *) _unknown_option "$1";;
+        -o|--output)
+            if [ "$2" ] && [ ${2:0:1} != '-' ]
+            then
+                LOG_FILE="$2"
+                shift
+            else
+                echo "$0: Missing argument for $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+        -f|--log-format)
+            if [ "$2" ] && [ ${2:0:1} != '-' ]
+            then
+                LOG_FORMAT="$2"
+                shift
+            else
+                echo "$0: Missing argument for $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+        -t|--time-format)
+            if [ "$2" ] && [ ${2:0:1} != '-' ]
+            then
+                TIME_FORMAT="$2"
+                shift
+            else
+                echo "$0: Missing argument for $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+        -c|--no-color)
+            REMOVE_COLORS=1
+            shift
+            ;;
+        -p|--no-print)
+            NO_PRINT=1
+            shift
+            ;;
+        -h|--help)
+            prntl_print_help
+            ;;
+        -*)
+            echo -e "$0: Unknown option: $1\nSee 'prntl --help'." >&2
+            exit 1
+            ;;
+        *)
+            LOG+="$1 "
+            shift
+            ;;
     esac
-    shift
 done
 
-[ ! -t 0 ] && _print_log || _show_help
+prntl_print_log $LOG

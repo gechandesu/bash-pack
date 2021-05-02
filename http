@@ -4,21 +4,17 @@ set -o monitor   # for job control.
 set -o errexit   # exit if error occurs.
 
 R="\e[31m"       # red
-G="\e[32m"       # green
 Y="\e[33m"       # yellow
-B="\e[34m"       # blue
 N="\e[0m"        # no color
 
 # Defaults
-HOST='0.0.0.0'
+HOST=0.0.0.0
 PORT=8000
 DIR=$PWD
 
 # Check Python 3
-if hash python3 2>/dev/null
+if ! hash python3 2>/dev/null
 then
-    :
-else
     echo -e "${R}$0: Error: Python 3 executable not found.${N}" >&2
     exit 1
 fi
@@ -31,19 +27,16 @@ Usage:
     http [OPTIONS]... [ARGS]...
 
 Options:
-    -c, --cgi, c, cgi
-                    run as CGI Server.
-    -f, --firefox, f, ff, firefox
-                    run Firefox.
-    -h, --help, h, help
-                    print this message and exit.
+    --cgi, cgi      run as CGI Server.
+    -f, f           run Firefox.
+    --help, help    print this message and exit.
 
 Optional arguments:
     HOST            host to bind. Default: 0.0.0.0
     PORT            port to bind. Default: 8000
     DIR             directory to serve. Default: cwd.
 
-Also you can use this syntax: HOST:PORT
+Also HOST:PORT syntax is allowed.
 EOF
 exit 0
 }
@@ -99,8 +92,7 @@ while [ "$(ss -tanp | grep -o "$PORT")" ]
 do
     if [[ "$retries" == 4 ]]
     then
-        echo -e "${R}Max number of retries has been reached!${N}" >&2
-        echo "Exiting." >&2
+        echo -e "${R}Max number of retries reached! Exiting.${N}" >&2
         exit 1
     else
         :
