@@ -121,12 +121,12 @@ $ echo 'my un$escaped \sstring --foo' | esc -o
 Print highlighted text to STDOUT.
 
 Usage:
-    view [OPTIONS..] [ARGUMENTS]...
+    view [-l] [-n] [<file>]
 
 Options:
-    -l --less   send output to 'less -R'
-    -n --lines  less, but shows line nums (less -RN).
-    -h --help   show this help message and exit.
+    -l          send output to 'less -R'.
+    -n          similar to -l, but shows line nums (less -RN).
+    --help      show this help message and exit.
 ```
 
 Script depends on **highlight** package ([link](http://www.andre-simon.de/)):

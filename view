@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 if ! hash highlight 2>/dev/null
-then echo "$0: highlight executable not found." >&2 && exit 1
+then
+    echo "$0: highlight executable not found." >&2 && exit 1
 fi
 
 view_print_help() {
@@ -9,18 +10,22 @@ cat << EOF
 Print highlighted text to STDOUT.
 
 Usage:
-    view [OPTIONS..] [ARGUMENTS]...
+    view [-l] [-n] [<file>]
 
 Options:
-    -l --less   send output to 'less -R'
-    -n --lines  less, but shows line nums (less -RN).
-    -h --help   show this help message and exit.
+    -l          send output to 'less -R'.
+    -n          similar to -l, but shows line nums (less -RN).
+    --help      show this help message and exit.
 EOF
 exit 0
 }
 
 view_print() {
-    cat "${1:-/dev/stdin}" | highlight -O ansi
+    local ext=sh
+    if [[ "$1" =~ .+\..+ ]]; then
+        local ext="${1##*.}"
+    fi
+    cat "${1:-/dev/stdin}" | highlight -O ansi -S "$ext"
 }
 
 # Do nothing if no arguments passed and no STDIN.
@@ -28,32 +33,32 @@ view_print() {
 
 while (( "$#" )); do
     case $1 in
-        -l|--less)
-            LESS_R=1;;
-        -n|-ln|-nl|--lines)
-            LESS_R=1
-            LESS_RN=1;;
-        -h|--help)
+        --help)
             view_print_help;;
+        -*)
+            for i in $(seq 2 ${#1}); do opts+=("-${1:i-1:1}"); done
+
+            for opt in "${opts[@]}"
+            do
+                case "$opt" in
+                    -l) less_r=1;;
+                    -n) less_n='-N';;
+                    *) echo "$0: Bad option: $opt" >&2; exit 1;;
+                esac
+            done
+            shift
+            ;;
         *)
             if [ -f "$1" ]
             then
-                INPUT_FILE="$1"
+                input_file="$1"
             else
-                echo "$0: No such file: $1" >&2
-                exit 1
+                echo "$0: No such file: $1" >&2; exit 1
             fi
             ;;
     esac
     shift
 done
 
-if [ "$LESS_R" ] && [ ! "$LESS_RN" ]
-then
-    view_print "$INPUT_FILE" | less -R
-elif [ "$LESS_R" ] && [ "$LESS_RN" ]
-then
-    view_print "$INPUT_FILE" | less -RN
-else
-    view_print "$INPUT_FILE"
-fi
+if [ "$less_r" ] || [ "$less_n" ]; then pipe_less='| less -R '; fi
+eval view_print "$input_file" "$pipe_less" "$less_n"
