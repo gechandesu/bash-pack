@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 
-http_version=0.5 # this script version.
+http_version=0.5.1 # this script version.
 
 set -o monitor   # for job control.
 set -o errexit   # exit if error occurs.
-
-R="\e[31m"       # red
-Y="\e[33m"       # yellow
-N="\e[0m"        # no color
 
 # Defaults
 HOST=0.0.0.0
@@ -17,7 +13,7 @@ DIR=$PWD
 # Check Python 3
 if ! hash python3 2>/dev/null
 then
-    echo -e "${R}$0: Error: Python 3 executable not found.${N}" >&2
+    echo -e "$0: Python 3 executable not found." >&2
     exit 1
 fi
 
@@ -54,7 +50,7 @@ do
         -v|--version)
             echo "http v$http_version"; exit 0;;
         -*|--*)
-            echo -e "${R}$0: Error: Bad option: $1${N}" >&2
+            echo -e "$0: Bad option: $1" >&2
             exit 1
             ;;
         *)
