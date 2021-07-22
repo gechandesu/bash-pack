@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+
+yad_version=0.1
+API_URL='https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key='
+
+yad_help() {
+cat << EOF
+Dowload file from Yandex.Disk cloud.
+
+Usage: yad [--version] [--help] [-d] <link>
+
+Options:
+    -d          get direct link.
+    -v          verbose output.
+    --version   print version and exit.
+    -h, --help  print this help message and exit.
+EOF
+exit 0
+}
+
+[[ "$@" ]] || yad_help
+
+while (( "$#" ))
+do
+    case "$1" in
+        --version) echo "v$yad_version"; exit 0;;
+        -h|--help) yad_help;;
+        -*)
+            for i in $(seq 2 ${#1}); do opts+=("-${1:i-1:1}"); done
+
+            for opt in "${opts[@]}"
+            do
+                case "$opt" in
+                    -d) direct_only=1;;
+                    -v) verbose=1;;
+                    *) echo "$0: Bad option: $opt" >&2; exit 1;;
+                esac
+            done
+            shift;;
+        *)
+            if [[ ! "$1" =~ https://(disk.yandex.ru|yadi.sk)/.+/.+ ]]
+            then
+                echo "$0: Bad link: $1" >&2; exit 1
+            fi
+            share_link+=("$1")
+            if [ ${#share_link[@]} -ne 1 ]; then
+                echo "$0: Too many arguments" >&2; exit 1
+            fi
+            shift;;
+    esac
+done
+
+if [ ${#share_link[@]} -eq 0 ]; then
+    echo "$0: No share link specified." >&2; exit 1
+fi
+
+# Check the share link availability.
+response=$(curl -sw %{http_code} -o /dev/null "$share_link")
+[ "$verbose" ] && echo "Responce code: $response"
+if [[ $response != 200 ]]; then
+    echo "$0: Bad link: $share_link" >&2; exit 1
+fi
+
+if [ "$verbose" ]; then
+    echo "Share link: $share_link"
+    echo "API Request URL: $API_URL$share_link"
+fi
+
+# Get direct URL from Yandex Public API.
+direct_link="$(python3 -c \
+"import json
+dl = json.loads('$(curl -s "$API_URL$share_link")')
+print(dl['href'])"
+)"
+
+[ "$verbose" ] && echo "Direct link: $direct_link"
+
+if [ "$direct_only" ]; then
+    echo "$direct_link"
+    exit 0
+fi
+
+# Download file.
+file_name="$(grep -oP '(?<=filename\=).+(?=&disposition)' <<< "$direct_link")"
+[ "$verbose" ] && echo "File name: $file_name"
+
+if [ "$verbose" ]; then
+    curl_opts='-v'
+fi
+
+curl -L "$curl_opts" "$direct_link" > "$file_name"

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+# Convert Markdown to roff for manpages.
+# Simple pandoc wrapper.
+
+md2man() {
+    # $1 -- source Markdown file.
+    # $2 -- man file name.
+    if [[ "$1" && "$2" ]]; then
+        pandoc -s -f markdown -t man "$1" --standalone > "$2"
+    else
+        echo 'Convert Markdown to manpage format (roff).'
+        echo 'Usage: md2man <input file> <output file>'
+    fi
+}
+
+md2man "$@"

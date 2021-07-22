@@ -1,0 +1,47 @@
+ _     _
+| |__ | |__  ___
+| '_ \| '_ \/ __|
+| | | | |_) \__ \
+|_| |_|_.__/|___/
+
+Handy Bash scripts
+
+Installation
+============
+
+I recomend install scripts into the home directory. Place they into `~/.local/bin`. If you don't have it, create it:
+
+    $ mkdir -p ~/.local/bin
+
+Give executing rights for scripts:
+
+    $ chmod +x <script_name>
+
+Check your PATH variable:
+
+    $ echo $PATH
+
+If you don't find `/home/your_username/.local/bin` run:
+
+    $ echo 'export PATH+=:$HOME/.local/bin' >> ~/.bashrc && source ~/.bashrc
+
+Done. Run `<script_name> --help` for check.
+
+---
+
+Scripts
+=======
+
+http        Python 3 http.server runner.
+
+yad         Download file from Yandex.Disk storage.
+
+md2man      Convert Markdown to roff. Pandoc wrapper.
+
+prntl       Print log. Simple logging tool.
+
+esc         Escape whitespaces and specail characters in string.
+
+view        Print highlighted text to STDOUT. highlight wrapper.
+
+rng         Expand ranges like "1-4,7,9-12" into a number series.
