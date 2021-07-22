@@ -21,7 +21,7 @@ http_print_help() {
 cat <<EOF
 Run Python 3 builtin HTTP Server.
 
-Usage: http [-v | --version] [-h, | --help] [-c | --cgi] [-f | --firefox]
+Usage: http [-v | --version] [-h | --help] [-c | --cgi] [-f | --firefox]
             [<host>[:<port>]] [<port>] [<dir>]
 
 Options:

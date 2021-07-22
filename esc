@@ -7,7 +7,7 @@ cat <<EOF
 Escape whitespaces and specail characters in string.
 Uses 'printf %q'. Read more in 'man printf'.
 
-Usage: esc [-h | --help] [-o | --opts] [<string>...]
+Usage: esc [-v | --version] [-h | --help] [-o | --opts] [<string>...]
 
 Options:
     -o, --opts      add end of the options sign (double dash). See

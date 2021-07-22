@@ -12,7 +12,7 @@ Print formatted log to STDOUT and log file.
 
 Usage: prntl [-v| --version] [-h | --help] [-o | --output=<file>]
              [-f | --log-format=<string>] [-t | --time-format=<string>]
-             [-p | --no-print] [-c | --no-color]
+             [-p | --no-print] [-c | --no-color] [<string>]
 
 Options:
     -o, --output=<file>         set log file name. Default: $LOG_FILE.
