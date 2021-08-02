@@ -34,6 +34,8 @@ Scripts
 
 http        Python 3 http.server runner.
 
+upl         Upload files to remote server via server alias.
+
 yad         Download file from Yandex.Disk storage.
 
 md2man      Convert Markdown to roff. Pandoc wrapper.

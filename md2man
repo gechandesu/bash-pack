@@ -1,16 +1,27 @@
 #!/usr/bin/env bash
 
 # Convert Markdown to roff for manpages.
-# Simple pandoc wrapper.
+# Simple Pandoc wrapper.
 
 md2man() {
     # $1 -- source Markdown file.
     # $2 -- man file name.
+    if [[ -t 0 && -z "$1" ]]; then
+        echo 'Convert Markdown to manpage format (roff).'
+        echo
+        echo 'Usage: md2man <input file> <output file>'
+        echo '       md2man <input file>'
+    fi
+
     if [[ "$1" && "$2" ]]; then
+        # Convert file.
         pandoc -s -f markdown -t man "$1" --standalone > "$2"
     else
-        echo 'Convert Markdown to manpage format (roff).'
-        echo 'Usage: md2man <input file> <output file>'
+        # View file preview in pager without saving.
+        pandoc -s -t man ${1:-"-"} |  # Read into Pandoc from file or STDIN.
+        groff -T utf8 -man         |  # format for pager.
+        sed 1,4d | head -n -4      |  # Chop off 4 leading/trailing (empty) lines.
+        less
     fi
 }
 
