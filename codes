@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+
+codes_help() {
+cat << EOF
+Display ANSI escape sequences.
+
+Usage: codes [--version] [-h | --help] [-a | --all] [--16] [--256]
+             [-f | --formatting]
+
+Options:
+    -a, --all   display all codes (default).
+    -f, --formatting    display text formatting sequences table.
+    --16    display 8/16 ANSI color codes table.
+    --256   display 88/256  ANSI color codes table.
+    -h, --help  print this help message and exit.
+    --version   print version and license info and exit.
+
+NOTE: Safe codes for Linux TTY and most other terminals are 8 colors,
+inverted color and bold. Support for other sequences depends on the terminal
+being used.
+EOF
+codes_ansi_helper
+exit 0
+}
+
+codes_version() {
+cat << EOF
+codes v1.0
+Copyright (C) 2021 gd <http://nixhacks.net>
+MIT License: <http://opensource.org/licenses/MIT>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+EOF
+exit 0
+}
+
+codes_ansi_helper() {
+    echo
+    echo '<Esc> character can be set as \e or \033 or \x1B'
+    echo '16 colors control sequence is <Esc>[ColorCodem'
+    echo '256 foreground control sequence is <Esc>[38;5;ColorNumberm'
+    echo '256 background control sequence is <Esc>[48;5;ColorNumberm'
+    echo '<Esc>[0m -- reset all attributes.'
+}
+
+codes_ansi_formatting() {
+    {
+        echo -n '1 21 '; echo -e "\e[1mBold\e[0m";
+        echo -n '2 22 '; echo -e "\e[2mDim\e[0m"
+        echo -n '3 23 '; echo -e "\e[3mItalic\e[0m"
+        echo -n '4 24 '; echo -e "\e[4mUnderlined\e[0m"
+        echo -n '5 25 '; echo -e "\e[5mBlinking\e[0m"
+        echo -n '7 27 '; echo -e "\e[7mInverted\e[0m"
+        echo -n '8 28 '; echo -e "\e[8mHidden \e[0m(hidden)"
+        echo -n '9 29 '; echo -e "\e[9mStrike\e[0m"
+    }   | column --table --table-columns 'Set,Reset' --table-right 'Set,Reset'
+}
+
+codes_ansi_16_colors() {
+    for fgbg in 3 9 4 10; do
+        for color in {0..7}; do
+            printf "\e[${fgbg}%sm %3s \e[0m" $color ${fgbg}${color}
+            if [ $color == 7 ]; then echo -e ''; fi;
+        done
+    done
+}
+
+codes_ansi_256_colors() {
+    for fgbg in 38 48 ; do # Foreground / Background
+        for color in {0..255} ; do # Colors
+            # Display the color
+            printf "\e[${fgbg};5;%sm  %3s  \e[0m" $color $color
+                # Display 6 colors per lines
+                if [ $((($color + 1) % 6)) == 4 ] ; then
+                    echo # New line
+                fi
+        done
+    done
+}
+
+codes_ansi_all() {
+    echo -e '\e[1mFORMATTING\e[0m'
+    codes_ansi_formatting
+    echo -e '\n\e[1m8/16 COLORS\e[0m'
+    codes_ansi_16_colors
+    echo -e '\n\e[1m88/256 COLORS\e[0m'
+    codes_ansi_256_colors
+    codes_ansi_helper
+}
+
+[[ ! "$@" ]] && codes_ansi_all
+
+while (( "$#" )); do
+case "$1" in
+    -a|--all) codes_ansi_all;       exit 0;;
+    -f|--formatting) codes_ansi_formatting; exit 0;;
+    --16)    codes_ansi_16_colors;   exit 0;;
+    --256)   codes_ansi_256_colors;  exit 0;;
+    -h|--help) codes_help;;
+    --version) codes_version;;
+    *) echo "${0##/*}: $1: bad option" >&2; exit 1;;
+esac
+done
