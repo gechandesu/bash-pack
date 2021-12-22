@@ -1,0 +1,404 @@
+#!/usr/bin/env bash
+
+#
+# * Boiler
+#
+# Copyright (c) 2021 ge <me@nixhacks.net>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+boiler_version=0.1
+
+boiler_help() {
+	cat <<- EOF
+	Bash boilerplate.
+
+	Usage: boiler [--version] [--help] <command> [<options>] <arguments>
+
+	Options:
+	    --version       print version and exit.
+	    --help          print this help message and exit.
+
+	Commands:
+	    project <project> [<options>]   start new project <project>.
+	    function <function> [<options>] print function template.
+	    file <template> [<options>]     create file from template.
+	    license <license> [<options>]   print license text.
+
+	Command options:
+
+	project
+	    -l, --license=<gplv3|mit|unlicense>   project's license.
+	    -a, --author=<author>       project's author.
+
+	function
+	    -l, --list      list available function templates.
+
+	file
+	    -l, --list      list available file templates.
+	EOF
+    exit 0
+}
+
+boiler_opts() {
+    # GNU-style CLI options parser.
+    #
+    # Parse --opt VAL and --opt=VAL options.
+    # Requires 2 arguments: $1, $2.
+    # Returns:
+    #   $opt - option name.
+    #   $arg - option's value.
+    #   $sft - value for shift.
+    if [[ "$1" =~ .+=.+ ]]; then
+        opt="${1%%=*}"; arg="${1#*=}"; sft=1
+    elif [[ ! "$1" =~ .+=$ ]] && \
+         [ "$2" ] && [ "${2:0:1}" != '-' ]
+    then
+        opt="$1"; arg="$2"; sft=2
+    else
+        opt="$1"
+        if [[ "$1" =~ .+=$ ]]; then opt="${1:0: -1}"; fi
+        bk_err -s "missing argument for: $opt"
+    fi
+}
+
+boiler_version() {
+    echo boiler $boiler_version
+    exit 1
+}
+
+boiler_project() {
+    while (( "$#" )); do
+        case "$1" in
+            -l|--license) boiler_opts "$1" "$2"
+                BOILERLICENSE="$arg"; shift $sft;;
+            -a|--author)  boiler_opts "$1" "$2"
+                BOILERAUTHOR="$arg"; shift $sft;;
+            -*) echo "$0: $1: bad argument" >&2; exit 1;;
+            *)  BOILERPROJECT="$1"; shift;;
+        esac
+    done
+
+    local _project="$BOILERPROJECT"
+    local _license="$BOILERLICENSE"
+    local _author="$BOILERAUTHOR"
+
+    echo $_project
+    echo $_license
+    echo $_author
+
+    [[ "$_project" != '' ]] || {
+        echo No project name specified >&2; exit 1
+    }
+
+    mkdir -p "${PWD}/${_project}"
+    local _script="${PWD}/${_project}/${_project}"
+    echo '#!/usr/bin/env bash' > "$_script"
+    [ "$_license" ] && boiler_license "$_license" >> "$_script"
+    chmod +x "$_script"
+}
+
+boiler_function() {
+    case "${1,,}" in
+        opts|editor|yesno|anykey|iniparser)
+            __func="${1,,}"; shift;;
+        -l|--list) __listfunc=1; shift;;
+        *) echo "$0: $1: bad function" >&2; exit 1;;
+    esac
+
+    [ "$__listfunc" ] && {
+        echo 'opts          GNU-style argument parser.'
+        echo 'editor        get editor.'
+        echo 'yesno         Yes/No interactive dialog'
+        echo 'anykey        'Press any key' interactive dialog.'
+        echo 'iniparser     .ini config file parser.'
+        echo 'random        random string generator.'
+        return 0
+    }
+
+    if hash highlight > /dev/null; then
+        hl=' | highlight -O ansi -S bash'
+    fi
+    eval "boiler_function::$__func $hl"
+}
+
+boiler_file() {
+    case "${1,,}" in
+        completion) __file="${1,,}"; shift;;
+        -l|--list)      __listfiles=1; shift;;
+        *) echo "$0: $1: bad function" >&2; exit 1;;
+    esac
+
+    [ "$__listfiles" ] && {
+        echo 'completion    Bash autocompletion script.'
+        return 0
+    }
+
+    eval boiler_file::$__file > $PWD/completion
+}
+
+boiler_license() {
+    case "${1,,}" in
+        gplv3|mit|unlicense) __license="${1,,}"; shift;;
+        *) echo "$0: $1: bad license" >&2; exit 1;;
+    esac
+    eval boiler_license::$__license
+}
+
+#
+# * BOILERPLATES
+#
+
+boiler_function::opts() {
+	cat <<- EOF
+	opts() {
+	    # GNU-style CLI options parser.
+	    #
+	    # Parse --opt VAL and --opt=VAL options.
+	    # Requires 2 arguments: \$1, \$2.
+	    # Returns:
+	    #   \$opt - option name.
+	    #   \$arg - option value.
+	    #   \$sft - value for shift.
+
+	    if [[ "\$1" =~ .+=.+ ]]; then
+	        opt="\${1%%=*}"; arg="\${1#*=}"; sft=1
+	    elif [[ ! "\$1" =~ .+=$ ]] && \\
+	         [ "\$2" ] && [ "\${2:0:1}" != "-" ]
+	    then
+	        opt="\$1"; arg="\$2"; sft=2
+	    else
+	        opt="\$1"
+	        if [[ "\$1" =~ .+=$ ]]; then opt="\${1:0: -1}"; fi
+	        echo "missing argument for: \$opt" >& /dev/null; exit 1
+	    fi
+	}
+	EOF
+}
+
+boiler_function::editor() {
+	cat <<- EOF
+	editor() {
+	    # Print default editor.
+	    #	
+	    # Usage: eval \`editor\` file
+
+	    _get_selected_editor() {
+	        source \$HOME/.selected_editor
+	        echo \$SELECTED_EDITOR
+	    }
+
+	    if [ "\$EDITOR" ]; then
+	        echo \$EDITOR
+	    elif [ -f \$HOME/.selected_editor ]; then
+	        _get_selected_editor
+	    elif hash /usr/bin/select-editor > /dev/null; then
+	        select-editor; _get_selected_editor
+	    elif hash /usr/bin/editor > /dev/null; then
+	        echo /usr/bin/editor
+	    else
+	        echo /usr/bin/vi
+	    fi
+	}
+	EOF
+}
+
+boiler_function::yesno() {
+	cat <<- EOF
+	yesno() {
+	    # Yes/No interactive dialog.
+	    #
+	    # Usage: if yesno 'Question'; then ...
+
+	    local __answer=
+	    [ "\$ASSUME_YES" ] && return 0
+
+	    while [ ! "\$__answer" ]; do
+	        echo -en "\$1 [y/n] "
+	        read -r reply
+	        case "\${reply,,}" in
+	            y|yes)  __answer=0;;
+	            n|no)   __answer=1;;
+	            *)      echo "Please, answer y or n";;
+	        esac
+	    done
+	    return "\$__answer"
+	}
+	EOF
+}
+
+boiler_function::anykey() {
+	cat <<- EOF
+	anykey() {
+	    read -n 1 -s -r -p "Press any key to continue..."
+	}
+	EOF
+}
+
+boiler_function::iniparser() {
+	cat <<- EOF
+	iniparser() {
+	    # Parse simple .ini-style config file
+	    #
+	    # Usage: iniparser file
+
+	    [ ! -f "\$1" ] && { echo "\$0: \$1: no such file"; exit 1; }
+
+	    local config="\$( \
+	        sed 's/[[:space:]]\+=[[:space:]]\+/=/g;
+	            s/#.*//g;/^=/d;/^$/d' <(cat "\$1" | grep = ) |
+	        while read -r LN; do echo \$(printf '%q' "\$LN"); done \
+	    )"
+
+	    eval "\$config"
+	}
+	EOF
+}
+
+boiler_function::random() {
+	cat <<- EOF
+	random() {
+	    # Generate random string
+	    #
+	    # Usage: line_len=32; random \$line_len
+
+	    local dict=({a..z} {A..Z} {0..9} - _)
+	    local range=\$(eval "echo {1..\$1}")
+	    for i in \$range; do echo -n \${dict[\$RANDOM%64]}; done
+	}
+	EOF
+}
+
+boiler_file::completion() {
+cat <<- EOF
+#!/usr/bin/bash
+
+_completion()
+    local cur prev
+    cur=\${COMP_WORDS[COMP_CWORD]}
+    prev=\${COMP_WORDS[COMP_CWORD-1]}
+
+    case \${COMP_CWORD} in
+        1) # Firs level commands
+            COMPREPLY=(\$(compgen -W "--help --version" -- \${cur}));;
+        2) # Subcommands
+            case \${prev} in
+                cmd) COMPREPLY=();;
+                *)  COMPREPLY=();;
+            esac;;
+        *) # Subcommand options completion
+            case \${COMP_WORDS[2]} in
+                *) COMPREPLY=();;
+            esac;;
+        *) COMPREPLY=();;
+    esac
+}
+
+complete -F _completion myscript
+EOF
+}
+
+boiler_license::gplv3() {
+	cat <<- EOF
+
+	# Copyright (c) $(date +%Y) $BOILERAUTHOR
+	#
+	# This program is free software: you can redistribute it and/or modify
+	# it under the terms of the GNU General Public License as published by
+	# the Free Software Foundation, either version 3 of the License, or
+	# (at your option) any later version.
+	#
+	# This program is distributed in the hope that it will be useful,
+	# but WITHOUT ANY WARRANTY; without even the implied warranty of
+	# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	# GNU General Public License for more details.
+	#
+	# You should have received a copy of the GNU General Public License
+	# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+	EOF
+}
+
+boiler_license::mit() {
+	cat <<- EOF
+
+	# Copyright (c) $(date +%Y) $BOILERAUTHOR
+	#
+	# Permission is hereby granted, free of charge, to any person obtaining
+	# a copy of this software and associated documentation files (the
+	# "Software"), to deal in the Software without restriction, including
+	# without limitation the rights to use, copy, modify, merge, publish,
+	# distribute, sublicense, and/or sell copies of the Software, and to
+	# permit persons to whom the Software is furnished to do so, subject to
+	# the following conditions:
+	#
+	# The above copyright notice and this permission notice shall be
+	# included in all copies or substantial portions of the Software.
+	#
+	# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+	# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+	# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+	# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+	# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+	# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+	# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+	EOF
+}
+
+boiler_license::unlicense() {
+	cat <<- EOF
+
+	# Copyright (c) $(date +%Y) $BOILERAUTHOR
+	#
+	# This is free and unencumbered software released into the public domain.
+	#
+	# Anyone is free to copy, modify, publish, use, compile, sell, or
+	# distribute this software, either in source code form or as a compiled
+	# binary, for any purpose, commercial or non-commercial, and by any
+	# means.
+	#
+	# In jurisdictions that recognize copyright laws, the author or authors
+	# of this software dedicate any and all copyright interest in the
+	# software to the public domain. We make this dedication for the benefit
+	# of the public at large and to the detriment of our heirs and
+	# successors. We intend this dedication to be an overt act of
+	# relinquishment in perpetuity of all present and future rights to this
+	# software under copyright law.
+	#
+	# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+	# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+	# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+	# IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+	# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+	# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+	# OTHER DEALINGS IN THE SOFTWARE.
+	#
+	# For more information, please refer to <http://unlicense.org/>
+
+	EOF
+}
+
+[[ "$@" ]] || boiler_help
+while (( "$#" )); do
+    case "$1" in
+        --version)  boiler_version;;
+        --help)     boiler_help;;
+        project)    shift; boiler_project   "$@"; shift "$#";;
+        function)   shift; boiler_function  "$@"; shift "$#";;
+        file)       shift; boiler_file      "$@"; shift "$#";;
+        license)    shift; boiler_license   "$@"; shift "$#";;
+        *)         echo "$0: $1: bad argument" >&2; exit 1;;
+    esac
+done

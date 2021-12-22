@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+
+_md2_help() {
+cat << EOF
+Convert Markdown to different formats.
+
+Usage:  md2 [-v | --version] [-h | --help] <command> [args]
+        md2html <input> [<output>]
+        md2man <input> [<output>]
+        md2pdf <input> [<output>]
+
+Options:
+    -h, --help      print this message and exit.
+    -v, --version   print version and exit.
+
+Commands:
+    html <input> [<output>]     convert to HTML.
+    man|roff <input> [<output>]
+            convert to ROFF. Pass only <input> for preview.
+    pdf <input> [<output>]      convert to PDF.
+
+Also you can use se symlbolic links to md2 to run commands.
+E.g.: symlink md2pdf -> md2 runs \`md2 pdf\`
+
+md2 is just Pandoc wrapper. Edit md2 source code for customize.
+EOF
+exit 0
+}
+
+_md2_usage() {
+    echo "Usage: ${func:1} <input> [<output>]"
+    [ "$func" == "_md2man" ] && \
+    echo "Pass only <input> for preview."
+    exit 0
+}
+
+_md2_version() {
+cat << EOF
+md2 0.1.0
+Copyright (C) gd <http://nixhacks.net>
+License MIT: <https://opensource.org/licenses/MIT>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+EOF
+exit 0
+}
+
+_md2() {
+    # Wrapper function
+    local inp out args preview
+
+    [[ ! "$@" ]] && _md2_usage
+
+    while (( "$#" )); do
+    case "$1" in
+        -h|--help)     _md2_usage   ;;
+        -v|--version)  _md2_version ;;
+        -*) echo "${func:1}: $1: bad option." >&2
+            _md2_usage              ;;
+        *)  args+=("$1"); shift     ;;
+    esac
+    done
+
+    if   [ ${#args[@]} -eq 2 ]; then
+        inp="${args[0]}"; out="${args[1]}"
+    elif [ ${#args[@]} -eq 1 ]; then
+        inp="${args[0]}"; out="${args[0]%%.*}.${ext}"
+        [ "$func" == "_md2man" ] && preview=1
+    else
+        _md2_usage
+    fi
+
+    echo -e "\e[1mInput:\e[0m \e[37m${inp}\e[0m"
+
+    if [ "$preview" ]; then
+        _md2man_preview "$inp"
+    else
+        echo -e "\e[1mOutput:\e[0m \e[37m${out}\e[0m"
+        eval "$func" "$inp" "$out"
+    fi
+}
+
+_md2_run() {
+    # Another wrapper function.
+    case "$1" in
+        -h|--help)      _md2_help   ;;
+        -v|--version)   _md2_version;;
+        html)       func=_md2html; ext='html'; shift;;
+        man|roff)   func=_md2man;  ext='1';    shift;;
+        pdf)        func=_md2pdf;  ext='pdf';  shift;;
+        *)  _md2_help               ;;
+    esac
+
+    _md2 "$@"
+    exit $?
+}
+
+# BEGIN Pandoc wrapper functions ##########################################
+
+_md2html() {
+    # HTML
+    pandoc  \
+        --from=markdown \
+        --to=html       \
+        --standalone    \
+        "$1"            \
+        --output="$2"   \
+        --variable document-css=true \
+        --variable linkcolor='[HTML]{0000ff}' \
+        --metadata title="${1%.*}"
+}
+
+_md2man() {
+    # ROFF
+    pandoc  \
+        --from=markdown \
+        --to=man        \
+        --standalone    \
+        "$1"            \
+        --output="$2"
+}
+
+_md2man_preview() {
+    # ROFF
+    # View ROFF in pager without saving.
+    pandoc --standalone --to man ${1:-"-"} | # Read into Pandoc
+    groff -T utf8 -man         | # format for pager.
+    sed 1,4d | head -n -4      | # Chop off 4 leading/trailing
+                                 # (empty) lines.
+    less
+}
+
+_md2pdf() {
+    # PDF
+    pandoc  \
+        --from=markdown-implicit_figures \
+        --to=pdf                \
+        "$1"                    \
+        --output="$2"           \
+        --pdf-engine=xelatex    \
+        --variable mainfont='FreeSans' \
+        --variable urlcolor='[HTML]{0000ff}' \
+        --variable pagestyle=empty
+}
+
+# END Pandoc wrapper functions ############################################
+
+case "$0" in
+    *md2)     _md2_run "$@"; shift "$#" ;;
+    *md2html) func=_md2html; ext='html' ;;
+    *md2man)  func=_md2man;  ext='1'    ;;
+    *md2pdf)  func=_md2pdf;  ext='pdf'  ;;
+    *) echo "$0: bad command"; _md2_help;;
+esac
+
+_md2 "$@"

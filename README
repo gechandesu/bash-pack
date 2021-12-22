@@ -1,51 +1,53 @@
- _     _
-| |__ | |__  ___
-| '_ \| '_ \/ __|
-| | | | |_) \__ \
-|_| |_|_.__/|___/
+   ___  ___  _______ __
+  / _ )/ _ \/ ___/ //_/
+ / _  / ___/ /__/ ,<
+/____/_/   \___/_/|_|
 
-Handy Bash scripts
 
-Installation
-============
+bpck (Bash-pack) is is a bundle of small Bash scripts for utilitary purposes.
 
-I recomend install scripts into the home directory. Place they into `~/.local/bin`. If you don't have it, create it:
-
-$ mkdir -p ~/.local/bin
-
-Give executing rights for scripts:
-
-$ chmod +x <script_name>
-
-Check your PATH variable:
-
-$ echo $PATH
-
-If you don't find `/home/your_username/.local/bin` run:
-
-$ echo 'export PATH+=:$HOME/.local/bin' >> ~/.bashrc && source ~/.bashrc
-
-Done. Run `<script_name> --help` for check.
-
----
+Many scripts are wrappers of some software? see dependecies below.
 
 Scripts
 =======
 
 http        Python 3 http.server runner.
-
-upl         Upload files to remote server via server alias.
-
+upload      Upload files to remote server via server alias.
+parts       Store and view code snippets.
 yad         Download file from Yandex.Disk storage.
-
-md2man      Convert Markdown to roff. Pandoc wrapper.
-
-prntl       Print formatted log. Simple logging tool.
-
-log         Logs viewing tool. Prints log to STDOUT.
-
-esc         Escape whitespaces and specail characters in string.
-
+md2         Convert Markdown to HTML, ROFF and PDF. Pandoc wrapper.
+codes       Print ANSI sequences (16, 256 colors and formatting).
+boiler      Bash boilerplate.
+dots        Dotfiles manager. Save and push selected files to git repo.
 view        Print highlighted text to STDOUT. highlight wrapper.
-
+log         Logs viewing tool (nginx and exim4). Prints logs to STDOUT.
+prntl       Print formatted log. Simple logging tool.
+esc         Escape whitespaces and specail characters in string.
 rng         Expand ranges like "1-4,7,9-12" into a number series.
+
+Installation
+============
+
+Install dependencies:
+
+    # Ubuntu / Debian
+    sudo apt install curl gawk git
+    sudo apt install pandoc     # for md2
+    sudo apt install highlight  # for view
+
+    # Arch Linux
+    sudo pacman -S curl gawk git
+    sudo pacman -S pandoc       # for md2
+    sudo pacman -S highlight    # for view
+
+Install all scripts (any distro):
+
+    dir=$HOME/.local/bin; bashfile=$HOME/.bashrc
+    [[ "$XDG_SESSION_TYPE" == "tty" ]] && bashfile=$HOME/.bash_profile
+    mkdir -p $dir
+    git clone https://gitea.gch.icu/ge/bpck.git $dir
+    chmod +x $dir/*
+    [[ ! $PATH =~ "$dir" ]] && { echo "export PATH=$dir:\$PATH" >> $bashfile; }
+    . $bashfile
+
+P.S.: You can remove unwanted scripts directly from ~/.local/bin

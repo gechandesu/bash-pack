@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+
+version=0.1
+dots_conf_file=${HOME}/.dots.conf
+dots_local_repo=${HOME}/.dots
+
+# Color scheme
+R="\e[31m"  # red
+G="\e[32m"  # green
+Y="\e[33m"  # yellow
+B="\e[34m"  # blue
+M="\e[95m"  # light magenta
+C="\e[36m"  # cyan
+Gr="\e[37m" # grey
+N="\e[0m"   # no color
+b="\e[1m"   # bold font
+
+dots_version() {
+cat << EOF
+dots $version
+EOF
+exit 0
+}
+
+dots_help() {
+cat << EOF
+Manage dotfiles.
+
+Usage: dots [--version] [--help] <command>
+
+Commands:
+    save    commit dotfiles to local repo (~/.dots)
+    push    push dotfiles to remote git repo.
+
+Options:
+    --version   print version and exit.
+    --help      print this message and exit.
+EOF
+exit 0
+}
+
+dots_init() {
+    if [ -f "$dots_conf_file" ]; then
+        :   # do nothing
+    else
+        echo -e "${R}${dots_conf_file} doesn't exist\n" >&2
+        echo -e "${dots_conf_file} content example:" >&2
+        echo "  .bashrc" >&2
+        echo "  .bash_aliases" >&2
+        echo -e "${N}"
+        exit 1
+    fi
+
+    if [ -d "${dots_local_repo}/.git" ]; then
+        :   # do nothing
+    else
+        echo -e "${b}Init new ropository in${N} ${dots_local_repo}"
+        mkdir -p "$dots_local_repo"
+        git init "$dots_local_repo"
+    fi
+}
+
+dots_clean() {
+    # Remove confidential data from .bash* files.
+    # `# Work` comment is trigger. Everything after this
+    # comment to end of file will be deleted.
+
+    for bashfile in ${dots_local_repo}/.bash*; do
+        #echo "$bashfile"
+        lnnum=`cat "$bashfile" | grep '# Work' -n | cut -d ':' -f 1`
+        #cat "$bashfile" | grep '# Work' -n
+        #echo "LN: $lnnum"
+        if [ "$lnnum" != "" ]; then
+            sed -i "${lnnum}q" "$bashfile"
+        fi
+    done
+}
+
+dots_save() {
+    dots_init
+
+    echo -e "${b}Copy dotfiles to repo${N}..."
+    for dotfile in $(cat "$dots_conf_file"); do
+        cp "${HOME}/${dotfile}" "${dots_local_repo}/"
+        echo -e "${G}$dotfile${N}"
+    done
+
+    dots_clean  # Remove confidential data
+
+    echo -e "${b}---${N}"
+    git -C "${dots_local_repo}" add .
+    git -C "${dots_local_repo}" commit -m 'Update dotfiles'
+
+    echo -e "\n${b}Tip:${N} run ${M}${b}dots push${N}" \
+        "to push them to remote repo."
+}
+
+dots_push() {
+    local remote="$(git -C "${dots_local_repo}" remote show)"
+    if [ "$remote" == "" ]; then
+        echo -e "${b}Add new remote server:${N}"
+        echo -e \
+        "Paste address like: ${Gr}git@github.com:user/repo.git${N} below:"
+        while true; do
+            read remote_addr
+            if [[ "$remote_addr" =~ .*/.*\.git ]]; then
+                break
+            else
+                echo "Please, re-enter remote address:"
+            fi
+        done
+        echo -en "Add remote repo... "
+        git -C "${dots_local_repo}" remote add dots-repo "$remote_addr"
+        echo -e "${G}${b}OK${N}"
+    else
+        :   # do nothing
+    fi
+
+    echo -e "${b}Processing${N}..."
+    git -C "${dots_local_repo}" push -u dots-repo master
+}
+
+[[ ! "$@" ]] && dots_help
+
+while (( "$#" )); do
+    case "$1" in
+        save)   shift; dots_save "$@"; shift "$#";;
+        push)   shift; dots_push "$@"; shift "$#";;
+        clean)  shift; dots_clean "$@"; shift "$#";;
+        --version)      dots_version      ;;
+        --help)         dots_help         ;;
+        -*) echo "$1: bad option" >&2; exit 1;;
+        *)  args+=("$1"); shift;;
+    esac
+done
