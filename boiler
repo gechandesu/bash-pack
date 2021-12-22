@@ -94,10 +94,6 @@ boiler_project() {
     local _license="$BOILERLICENSE"
     local _author="$BOILERAUTHOR"
 
-    echo $_project
-    echo $_license
-    echo $_author
-
     [[ "$_project" != '' ]] || {
         echo No project name specified >&2; exit 1
     }
@@ -281,32 +277,32 @@ boiler_function::random() {
 }
 
 boiler_file::completion() {
-cat <<- EOF
-#!/usr/bin/bash
+	cat <<- EOF
+	#!/usr/bin/bash
 
-_completion()
-    local cur prev
-    cur=\${COMP_WORDS[COMP_CWORD]}
-    prev=\${COMP_WORDS[COMP_CWORD-1]}
+	_completion() {
+	    local cur prev
+	    cur=\${COMP_WORDS[COMP_CWORD]}
+	    prev=\${COMP_WORDS[COMP_CWORD-1]}
 
-    case \${COMP_CWORD} in
-        1) # Firs level commands
-            COMPREPLY=(\$(compgen -W "--help --version" -- \${cur}));;
-        2) # Subcommands
-            case \${prev} in
-                cmd) COMPREPLY=();;
-                *)  COMPREPLY=();;
-            esac;;
-        *) # Subcommand options completion
-            case \${COMP_WORDS[2]} in
-                *) COMPREPLY=();;
-            esac;;
-        *) COMPREPLY=();;
-    esac
-}
+	    case \${COMP_CWORD} in
+	        1) # Firs level commands
+	            COMPREPLY=(\$(compgen -W "--help --version" -- \${cur}));;
+	        2) # Subcommands
+	            case \${prev} in
+	                cmd) COMPREPLY=();;
+	                *)  COMPREPLY=();;
+	            esac;;
+	        *) # Subcommand options completion
+	            case \${COMP_WORDS[2]} in
+	                *) COMPREPLY=();;
+	            esac;;
+	        *) COMPREPLY=();;
+	    esac
+	}
 
-complete -F _completion myscript
-EOF
+	complete -F _completion myscript
+	EOF
 }
 
 boiler_license::gplv3() {
