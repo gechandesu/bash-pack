@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+
+#
+# * Parts
+#
+# Store and view your code snippets in files.
+#
+
+PARTSVERSION=0.1
+[ "$PARTSPATH" ]    || PARTSPATH=${HOME}/.local/share/parts
+[ -d "$PARTSPATH" ] || mkdir -p "$PARTSPATH" ||
+    { echo "Error: Cannot create PARTSPATH: $PARTSPATH"; exit 1; }
+PARTS=(`find "$PARTSPATH" -type f`)
+
+pt_help() {
+	cat <<- EOF
+	Store and view code snippets (parts).
+
+	Usage: parts [-v| --version] [-h | --help] [-i | --interactive]
+	             [-a | --add <part>] [-l | --lang <language>]
+	             [-t | --tag <tag>] [-d | --descr <description]
+	             [-r | --regex <regex>]
+
+	Options:
+	    -i, --interactive       add a part in interactive mode.
+	    -a, --add <part>        part text.
+	    -l, --lang <language>   part's language.
+	    -t, --tag <tag>         part's tag.
+	    -d, --descr <description    part description
+	    -r, --regex <regex>     search part by regex (grep -P).
+	    -h, --help      print this help message and exit.
+	    -v, --version   print version and exit.
+
+	Environment variables:
+	    PARTSPATH
+	        path to save parts. Default: \$HOME/.local/share/parts
+	    EDITOR
+	        editor to be used in interactive mode.
+	EOF
+    exit 0
+}
+
+pt_random() {
+    local dict=({a..z} {A..Z} {0..9} - _)
+    for i in {1..32}; do
+        echo -n ${dict[$RANDOM%64]}
+    done
+}
+
+pt_interactive() {
+    local _temp=`mktemp`
+    local _edit="$EDITOR"
+    local _partfile="${PARTSPATH}/`pt_random`.txt"
+	cat > "$_temp" <<- EOF
+	# Type your data between BEGIN and END comments.
+	# DO NOT REMOVE COMMENTS!
+	# See highlight(1) '--syntax' for Lang options.
+	
+	# Part BEGIN
+	
+	# Part END
+	
+	# Lang BEGIN
+	
+	# Lang END
+	
+	# Tag BEGIN
+	
+	# Tag END
+	
+	# Descr BEGIN
+	
+	# Descr END
+	EOF
+    "$_edit" "$_temp"
+
+    # Check file
+    pt_parse_part "$_temp"
+    [ "$PARTCODE" ] || { echo Exited.; rm "$_temp"; exit 130; }
+
+    if cat "$_temp" > "$_partfile"; then
+        echo -e "\e[1mSaved to:\e[0m $_partfile"
+        rm "$_temp"
+    else
+        echo "Cannot write part. Saved to temporary file $_temp"
+        exit 1
+    fi
+}
+
+pt_add() {
+    local _partfile="${PARTSPATH}/`pt_random`.txt"
+	cat > "$_partfile" <<- EOF
+	# Type your data between BEGIN and END comments.
+	# DO NOT REMOVE COMMENTS!
+	# See highlight(1) '--syntax' for Lang options.
+	
+	# Part BEGIN
+	$PARTCODE
+	# Part END
+	
+	# Lang BEGIN
+	$PARTLANG
+	# Lang END
+	
+	# Tag BEGIN
+	$PARTTAG
+	# Tag END
+	
+	# Descr BEGIN
+	$PARTDESCR
+	# Descr END
+	EOF
+    [ -f "$_partfile" ] && { echo -e "\e[1mSaved to:\e[0m $_partfile"
+    } || { echo "Cannot write part. Saved to temporary file $_temp"; exit 1; }
+}
+
+pt_parse_part() {
+    PARTCODE="$(grep -zoP \
+        '(?<=# Part BEGIN\n)(((.*)\n)*)(?=# Part END)' "$1" | tr -d '\0')"
+    PARTLANG="$(grep -zoP \
+        '(?<=# Lang BEGIN\n)(((.*)\n)*)(?=# Lang END)' "$1" | tr -d '\0')"
+    PARTTAG="$(grep -zoP \
+        '(?<=# Tag BEGIN\n)(((.*)\n)*)(?=# Tag END)' "$1" | tr -d '\0')"
+    PARTDESCR="$(grep -zoP \
+        '(?<=# Descr BEGIN\n)(((.*)\n)*)(?=# Descr END)' "$1" | tr -d '\0')"
+}
+
+pt_view_part() {
+    pt_parse_part "$1"
+    echo -e "\e[94m$1"
+    [ "$PARTDESCR" ] && echo -e "\e[94;1m+\e[0m \e[1m$PARTDESCR\e[0m"
+    [ "$PARTTAG" ] && echo -e "\e[94;1m#\e[0m \e[1m$PARTTAG\e[0m"
+    echo -e '\e[0m'
+
+    [ "$PARTLANG" ] || PARTLANG=txt
+    echo "$PARTCODE" #| highlight -O ansi -S "${PARTLANG,,}"
+    echo
+}
+
+pt_search_regex() {
+    local _list="$(grep -Prl "$1" "$PARTSPATH")"
+    [ "$_list" ] && {
+        while read -r part; do
+            pt_view_part "$part"
+        done <<< "$_list"
+    } || { echo -e "\e[91mNo matches for $1\e[0m"; exit 1; }
+}
+
+#
+# * Args parser
+#
+
+# Transform long options to short ones
+for arg in "$@"; do
+    shift
+    case "$arg" in
+        --version)      set -- "$@" "-v" ;;
+        --help)         set -- "$@" "-h" ;;
+        --interactive)  set -- "$@" "-i" ;;
+        --add)          set -- "$@" "-a" ;;
+        --lang)         set -- "$@" "-l" ;;
+        --tag)          set -- "$@" "-t" ;;
+        --descr)        set -- "$@" "-d" ;;
+        --regex)        set -- "$@" "-r" ;;
+        *)              set -- "$@" "$arg";;
+    esac
+done
+
+while getopts "vhia:l:t:d:r:" opt; do
+    case "$opt" in
+        v) echo parts $PARTSVERSION; exit 0;;
+        h) pt_help;;
+        i) pt_interactive;;
+        a) PARTCODE="$OPTARG";;
+        l) PARTLANG="$OPTARG";;
+        t) PARTTAG="$OPTARG";;
+        d) PARTDESCR="$OPTARG";;
+        r) pt_search_regex "$OPTARG";;
+    esac
+done
+
+[[ "$@" ]] || {
+    for _part in "${PARTS[@]}"; do
+        pt_view_part "$_part"
+    done
+}
+
+[[ "$@" =~ -a|--add ]] && {
+    pt_add
+}
