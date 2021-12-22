@@ -1,0 +1,344 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2021 gd
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# upload
+#
+# Upload files to remote server. upl implements handy interface for
+# scp (OpenSSH secure file copy). upl cannot be called a full-fledged
+# frontend (or wrapper) for scp, since it does not allow changing the scp
+# parameters through its interface without editing the source code.
+#
+# Instead, upl implements the concept for accessing frequently used remote
+# servers. All you need to download is a short server name and filenames.
+# See more info in 'upl --help' (upl_help() function below).
+
+upl_version=0.1
+upl_config=$HOME/.uploadrc
+
+# Default values.
+#
+# Default destination dir. Can be set in $upl_config file
+# in server URI or passed as CLI argument.
+#
+destdir='~'
+# Default SCP commands.
+#
+# This is just templates for printf.
+#
+# If you have SSH keys:
+scp_cmd='scp -r %s %s'
+# If you use password:
+scp_cmd_pass='sshpass -p %s scp -r %s %s'
+
+#   HELP
+########
+
+upl_help() {
+cat << EOF
+Upload files to remote server.
+
+Usage: upload [--version] [--help] [-a | --aliases] [-p | --prompt]
+              [-d | --dest=<path>] [<user@server:/path>]
+              [<alias>] <files>...
+
+Options:
+    -d, --dest=<path>   absolute path to destination dir on remote server.
+    -a, --aliases       print available server aliases and exit.
+    -p, --prompt    show uploading confirmation prompt.
+    --version       print version and exit.
+    --help          print this help message and exit.
+
+How to:
+1. Create a config file named '.uploadrc' in your home directory. It should
+list servers with their aliases in the following format:
+    <server alias> <user@server:/destination/dir> [<password>]
+Example:
+    srv1 root@srv.example.com password
+    srv2 admin@123.45.67.89:/uploads
+To upload testfile.txt to srv2 just run:
+    upload srv2 testfile.txt
+
+If you specify only one server in the file, then it will be used by default
+and you will not need to specify its alias when uploading files.
+
+The URI address and destination directory specified in the command line
+override the data from the .uploadrc.
+EOF
+exit 0
+}
+
+#   CONFIG PARSER
+#################
+
+upl_check_config() {
+    # Return error if $upl_config not exists or is empty.
+    if [ ! -f "$upl_config" ]; then
+        echo "$0: $upl_config: file not exist" >&2; exit 1
+    elif [ ! -s "$upl_config" ]; then
+        echo "$0: no servers set in $upl_config" >&2; exit 1
+    fi
+}
+
+upl_load_config() {
+    # Load configuration from file.
+    #
+    # Check syntax and return $servers
+
+    # Remove comments from config.
+    servers="$(sed '/^#/d;/^$/d;s/#.*//g' < "$upl_config")"
+
+    # Check syntax.
+    local ln=0 # line number
+    while read -r line
+    do
+        let ln++
+        # Invalid URI.
+        if [[ ! "$line" =~ \s*.+@.+ ]]; then
+        echo "$0: $upl_config: URI is not set in line $ln" >&2
+        exit 1
+        fi
+        # Parameters count.
+        local words=$(wc -w <<< "$line")
+        if [ $words -gt 3 ]; then
+        echo "$0: $upl_config: too many params in line $ln" >&2
+        exit 1
+        elif [ $words -eq 1 ]; then
+        echo "$0: $upl_config: invalid server entry in line $ln" >&2
+        exit 1
+        fi
+    done <<< "$servers"
+}
+
+upl_get_aliases() {
+    # Collect server aliases.
+    while read -r line
+    do
+        aliases+=("${line%% *}")
+    done <<< "$servers"
+}
+
+upl_set_destdir() {
+    # Set up $destdir.
+    #
+    # Default value is '~'
+    #
+    # Arguments:
+    #   $1 -- URI string.
+    if [[ "$1" =~ .+:.+ ]]; then
+        local uri="${1##*:}"  # '/path' from 'user@server:/path'
+    fi
+
+    # Keep default value if destination dir is not set anywhere.
+    if [[ ! "$destdir" = '~' ]]
+    then
+        :  # That means '$destdir is set as CLI argument.'
+           # Nothing to do. This has max priority.
+    else
+        if [ "$uri" ]; then destdir="$uri"; fi
+    fi
+}
+
+#   FUNCTIONS
+#############
+
+upl_show_list() {
+    # Print table lines with server entries.
+    #
+    # Passwords will not shown.
+
+    local table_content="$(echo "$servers" |
+    awk 'BEGIN {print "| " "Alias" " | " "URI" " |"}
+         {print "| " $1 " | " $2 " |"}' |
+    column -t
+    )"
+
+    local table_border=$(\
+    sed 's%|%+%g;s%[^+]%-%g;' <<< "$(head -n 1 <<< "$table_content")")
+
+    echo "$table_border"
+    echo "$(head -n 1 <<< "$table_content")"
+    echo "$table_border"
+    echo "$(sed '1d' <<< "$table_content")"
+    echo "$table_border"
+    exit 0
+}
+
+upl_yesno() {
+    # "Yes|No" interactive dialog.
+    #
+    # Return exit code 0 or 1.
+    local question="$1"  # message
+    local yes=0
+    local no=1
+    local answer=2
+
+    while [ $answer -eq 2 ]
+    do
+        echo -en "$question [y/n] "
+        read -r reply
+        case "$reply" in
+            y|Y|Yes|YES) answer=$yes;;
+            n|N|No|NO)   answer=$no;;
+            *) echo 'Please, answer y or n';;
+        esac
+    done
+
+    return "$answer"
+}
+
+#   ARGS PARSER
+###############
+
+upl_getopts() {
+    # GNU-style CLI options parser.
+    #
+    # Parse --opt VAL and --opt=VAL options.
+    # Requires 2 arguments: $1, $2.
+    # Return:
+    #   $opt - option name.
+    #   $arg - option's value.
+    #   $sft - value for shift.
+
+    if [[ "$1" =~ .+=.+ ]]; then
+        opt="${1%%=*}"; arg="${1#*=}"; sft=1
+    elif [[ ! "$1" =~ .+=$ ]] && \
+         [ "$2" ] && [ "${2:0:1}" != '-' ]
+    then
+        opt="$1"; arg="$2"; sft=2
+    else
+        opt="$1"
+        if [[ "$1" =~ .+=$ ]]; then opt="${1:0: -1}"; fi
+        echo "missing argument for: $opt" >&2; exit 1
+    fi
+}
+
+upl_is_uri() {
+    # Check URI pattern like user@server from string $1
+    #
+    # Return $is_uri
+    is_uri=1
+
+    if [[ "$1" =~ .+@.+ ]]; then is_uri=0; fi
+    return $is_uri
+}
+
+# Load configuration
+upl_check_config
+upl_load_config     # get $servers
+upl_get_aliases     # get $aliases from $servers
+
+[[ "$@" ]] || upl_help
+while (( "$#" ))
+do
+    case "$1" in
+        -p|--prompt) prompt=1; shift;;
+        -l|--list) upl_show_list; shift;;
+        -d|--dest|--dest=*)
+            sft=1  # Set default shift value.
+            upl_getopts "$1" "$2"
+            destdir="$arg"
+            shift "$sft";;
+        --help) upl_help;;
+        --version) echo "upl v$upl_version"; exit 0;;
+        -*) echo "$0: bad option: $1" >&2; exit 1;;
+        *)
+            sft=1  # Set default shift value.
+
+            if [[ "${aliases[@]}" =~ "$1" ]]  # is server alias?
+            then
+                server_alias="$1"
+            elif upl_is_uri "$1"  # is user@server URI?
+            then
+                server_uri="$1";
+                if [ "$2" ] && [ "${2:0:1}" != '-' ]; then
+                    ARGS+=("$2"); sft=2
+                fi
+            else
+                ARGS+=("$1");  # collect positional arguments.
+            fi
+            shift "$sft";;
+    esac
+done
+
+# Exit if no servers found in $upl_conf file.
+if [ -z "$servers" ]; then
+    echo "$0: $upl_config: no server entries found" >&2; exit 1
+fi
+
+# Exit if server alias is not set.
+if [ "${#aliases[@]}" -gt 1 ] && \
+   [ ! "$server_alias" ] && \
+   [ ! "$server_uri" ]
+then
+    echo "Please, specify server alias as argument or pass URI." >&2
+    echo "Run 'upload -a' to see available aliases." \
+        "See 'upload --help' for more." >&2
+    exit 1
+elif [ "${#aliases[@]}" -eq 1 ] && \
+     [ ! "$server_uri" ]
+then
+    # Use single alias as default.
+    server_alias=${servers%%* }
+fi
+
+# Get basic data: URI and destination dir.
+server_entry=($(grep "$server_alias" <<< "$servers"))
+[ "$server_uri" ] || server_uri=${server_entry[1]}
+upl_set_destdir "$server_uri"
+
+if [ "$prompt" ]; then
+    echo "Uploading to..."
+    echo
+    echo "Remote server:        $server_uri"
+    echo "Destination dir:      $destdir"
+    echo "Files to upload:"
+    echo -en '   '
+    echo -e "${ARGS[@]}" | fmt -t
+    echo
+    if upl_yesno "Do you want to continue?"
+    then echo  # just print new line
+    else echo Abort; exit 1
+    fi
+fi
+
+# Required data.
+#
+# There is:
+#    | user@server:/path        | password         | file list
+reqs="${server_uri%%:*}:$destdir ${server_entry[2]} ${ARGS[@]}"
+
+# Get upload command.
+if [ "${server_entry[2]}" ]; then
+    upload_cmd="$(echo "$reqs" |
+    awk '{print "sshpass -p " $2 " scp -r "}
+         {for(i=3;i<=NF;i++){printf "%s ", $i}}
+         {print " " $1}' | tr -d '\n')"
+else
+    upload_cmd="$(echo "$reqs" |
+    awk '{print "scp -r "}
+         {for(i=2;i<=NF;i++){printf "%s ", $i}}
+         {print " " $1}' | tr -d '\n')"
+fi
+
+# Upload files!
+eval "$upload_cmd"
