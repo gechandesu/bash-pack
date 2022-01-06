@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-#
-# * Boiler
+# * Boiler. Bash boilerplate.
 #
 # Copyright (c) 2021 ge <me@nixhacks.net>
 #
@@ -18,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-boiler_version=0.1
+boiler_version=0.1.1
 
 boiler_help() {
 	cat <<- EOF
@@ -31,22 +30,23 @@ boiler_help() {
 	    --help          print this help message and exit.
 
 	Commands:
-	    project <project> [<options>]   start new project <project>.
-	    function <function> [<options>] print function template.
-	    file <template> [<options>]     create file from template.
-	    license <license> [<options>]   print license text.
+	    project  <name> [<options>]     start new project with <name>.
+	    function <name> [<options>]     print function template.
+	    file     <name> [<options>]     create file from template.
+	    license  <name> [<options>]     print license text.
 
 	Command options:
 
-	project
-	    -l, --license=<gplv3|mit|unlicense>   project's license.
-	    -a, --author=<author>       project's author.
-
-	function
-	    -l, --list      list available function templates.
-
-	file
-	    -l, --list      list available file templates.
+	    project
+	        -l, --license=(gplv3|mit|unlicense) project's license.
+	        -a, --author=<author>               project's author.
+	    function
+	        -l, --list      list available function templates.
+	        -c, --no-color  do not highlight output.
+	    file
+	        -l, --list      list available file templates.
+	    licanse
+	        -l, --list      list available license texts.
 	EOF
     exit 0
 }
@@ -69,7 +69,7 @@ boiler_opts() {
     else
         opt="$1"
         if [[ "$1" =~ .+=$ ]]; then opt="${1:0: -1}"; fi
-        bk_err -s "missing argument for: $opt"
+        echo "${0##*/}: missing argument for: $opt"
     fi
 }
 
@@ -85,7 +85,7 @@ boiler_project() {
                 BOILERLICENSE="$arg"; shift $sft;;
             -a|--author)  boiler_opts "$1" "$2"
                 BOILERAUTHOR="$arg"; shift $sft;;
-            -*) echo "$0: $1: bad argument" >&2; exit 1;;
+            -*) echo "${0##*/}: $1: bad argument" >&2; exit 1;;
             *)  BOILERPROJECT="$1"; shift;;
         esac
     done
@@ -106,12 +106,15 @@ boiler_project() {
 }
 
 boiler_function() {
+    while (( "$#" )); do
     case "${1,,}" in
-        opts|editor|yesno|anykey|iniparser)
+        opts|editor|yesno|anykey|iniparser|random)
             __func="${1,,}"; shift;;
-        -l|--list) __listfunc=1; shift;;
-        *) echo "$0: $1: bad function" >&2; exit 1;;
+        -l|--list)      __listfunc=1; shift;;
+        -c|--no-color)  __nocolor=1; shift;;
+        *) echo "${0##*/}: $1: bad function" >&2; exit 1;;
     esac
+    done
 
     [ "$__listfunc" ] && {
         echo 'opts          GNU-style argument parser.'
@@ -120,35 +123,59 @@ boiler_function() {
         echo 'anykey        'Press any key' interactive dialog.'
         echo 'iniparser     .ini config file parser.'
         echo 'random        random string generator.'
-        return 0
+        exit 0
     }
 
+    [ "$__func" ] || {
+        echo "Pass function name. See 'boiler function --list'" >&2; exit 1; }
+
     if hash highlight > /dev/null; then
-        hl=' | highlight -O ansi -S bash'
+        [ "$__nocolor" ] || hl=' | highlight -O ansi -S bash'
     fi
+
     eval "boiler_function::$__func $hl"
 }
 
 boiler_file() {
+    while (( "$#" )); do
     case "${1,,}" in
         completion) __file="${1,,}"; shift;;
-        -l|--list)      __listfiles=1; shift;;
-        *) echo "$0: $1: bad function" >&2; exit 1;;
+        -l|--list)  __listfiles=1; shift;;
+        *) echo "${0##*/}: $1: bad filename" >&2; exit 1;;
     esac
+    done
 
     [ "$__listfiles" ] && {
         echo 'completion    Bash autocompletion script.'
-        return 0
+        exit 0
     }
 
-    eval boiler_file::$__file > $PWD/completion
+    [ "$__file" ] || {
+        echo "Pass file name. See 'boiler file --list'" >&2; exit 1; }
+
+    eval boiler_file::$__file > $PWD/$__file && \
+    echo $PWD/$__file
 }
 
 boiler_license() {
+    while (( "$#" )); do
     case "${1,,}" in
         gplv3|mit|unlicense) __license="${1,,}"; shift;;
-        *) echo "$0: $1: bad license" >&2; exit 1;;
+        -l|--list)  __listlicenses=1; shift;;
+        *) echo "${0##*/}: $1: bad license" >&2; exit 1;;
     esac
+    done
+
+    [ "$__listlicenses" ] && {
+        echo 'mit           MIT License <https://mit-license.org/>'
+        echo 'gplv3         GNU GPLv3 <https://www.gnu.org/licenses/>'
+        echo 'unlicense     The Unlicense <https://unlicense.org/>'
+        exit 0
+    }
+
+    [ "$__license" ] || {
+        echo "Pass license name. See 'boiler license --list'" >&2; exit 1; }
+
     eval boiler_license::$__license
 }
 
@@ -177,7 +204,7 @@ boiler_function::opts() {
 	    else
 	        opt="\$1"
 	        if [[ "\$1" =~ .+=$ ]]; then opt="\${1:0: -1}"; fi
-	        echo "missing argument for: \$opt" >& /dev/null; exit 1
+	        echo "Missing argument for: \$opt" >& /dev/null; exit 1
 	    fi
 	}
 	EOF
@@ -251,11 +278,10 @@ boiler_function::iniparser() {
 
 	    [ ! -f "\$1" ] && { echo "\$0: \$1: no such file"; exit 1; }
 
-	    local config="\$( \
+	    local config="\$( \\
 	        sed 's/[[:space:]]\+=[[:space:]]\+/=/g;
 	            s/#.*//g;/^=/d;/^$/d' <(cat "\$1" | grep = ) |
-	        while read -r LN; do echo \$(printf '%q' "\$LN"); done \
-	    )"
+	        while read -r LN; do echo \$(printf '%q' "\$LN"); done)"
 
 	    eval "\$config"
 	}
@@ -306,8 +332,10 @@ boiler_file::completion() {
 }
 
 boiler_license::gplv3() {
+    [ "$BOILERAUTHOR" ] || BOILERAUTHOR='<name of author>'
 	cat <<- EOF
 
+	# <one line to give the program's name and a brief idea of what it does.>
 	# Copyright (c) $(date +%Y) $BOILERAUTHOR
 	#
 	# This program is free software: you can redistribute it and/or modify
@@ -327,6 +355,7 @@ boiler_license::gplv3() {
 }
 
 boiler_license::mit() {
+    [ "$BOILERAUTHOR" ] || BOILERAUTHOR='<name of author>'
 	cat <<- EOF
 
 	# Copyright (c) $(date +%Y) $BOILERAUTHOR
@@ -354,6 +383,7 @@ boiler_license::mit() {
 }
 
 boiler_license::unlicense() {
+    [ "$BOILERAUTHOR" ] || BOILERAUTHOR='<name of author>'
 	cat <<- EOF
 
 	# Copyright (c) $(date +%Y) $BOILERAUTHOR
@@ -392,9 +422,9 @@ while (( "$#" )); do
         --version)  boiler_version;;
         --help)     boiler_help;;
         project)    shift; boiler_project   "$@"; shift "$#";;
-        function)   shift; boiler_function  "$@"; shift "$#";;
+        func|function) shift; boiler_function  "$@"; shift "$#";;
         file)       shift; boiler_file      "$@"; shift "$#";;
         license)    shift; boiler_license   "$@"; shift "$#";;
-        *)         echo "$0: $1: bad argument" >&2; exit 1;;
+        *)         echo "${0##*/}: $1: bad argument" >&2; exit 1;;
     esac
 done
