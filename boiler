@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-boiler_version=0.1.1
+boiler_version=0.2.0
 
 boiler_help() {
 	cat <<- EOF
@@ -38,8 +38,9 @@ boiler_help() {
 	Command options:
 
 	    project
-	        -l, --license=(gplv3|mit|unlicense) project's license.
-	        -a, --author=<author>               project's author.
+	        -l, --license=<license>     license, see 'boiler license --list'
+	        -a, --author=<author>       name of author.
+	        --no-dir                    do not make project's directory.
 	    function
 	        -l, --list      list available function templates.
 	        -c, --no-color  do not highlight output.
@@ -47,6 +48,7 @@ boiler_help() {
 	        -l, --list      list available file templates.
 	    licanse
 	        -l, --list      list available license texts.
+	        -s, --save      download license text and save as COPYING.
 	EOF
     exit 0
 }
@@ -85,6 +87,7 @@ boiler_project() {
                 BOILERLICENSE="$arg"; shift $sft;;
             -a|--author)  boiler_opts "$1" "$2"
                 BOILERAUTHOR="$arg"; shift $sft;;
+            --no-dir)   __no_prj_dir=1; shift;;
             -*) echo "${0##*/}: $1: bad argument" >&2; exit 1;;
             *)  BOILERPROJECT="$1"; shift;;
         esac
@@ -98,11 +101,16 @@ boiler_project() {
         echo No project name specified >&2; exit 1
     }
 
-    mkdir -p "${PWD}/${_project}"
-    local _script="${PWD}/${_project}/${_project}"
+    if [ "$__no_prj_dir" ]; then
+        local _script="${PWD}/${_project}"
+    else
+        mkdir -p "${PWD}/${_project}"
+        local _script="${PWD}/${_project}/${_project}"
+    fi
     echo '#!/usr/bin/env bash' > "$_script"
     [ "$_license" ] && boiler_license "$_license" >> "$_script"
     chmod +x "$_script"
+    echo "$_script"
 }
 
 boiler_function() {
@@ -162,6 +170,7 @@ boiler_license() {
     case "${1,,}" in
         gplv3|mit|unlicense) __license="${1,,}"; shift;;
         -l|--list)  __listlicenses=1; shift;;
+        -s|--save)  __save=1; shift;;
         *) echo "${0##*/}: $1: bad license" >&2; exit 1;;
     esac
     done
@@ -176,7 +185,29 @@ boiler_license() {
     [ "$__license" ] || {
         echo "Pass license name. See 'boiler license --list'" >&2; exit 1; }
 
+    if [ "$__save" ]; then
+        boiler_license_download "$__license"
+    fi
+
     eval boiler_license::$__license
+}
+
+boiler_license_download() {
+    local url
+    local copying="${PWD}/COPYING"
+    case "$1" in
+        mit)        url='https://mit-license.org/license.txt';;
+        gplv3)      url='https://www.gnu.org/licenses/gpl-3.0.txt';;
+        unlicense)  url='https://unlicense.org/UNLICENSE';;
+    esac
+
+    if curl --silent --connect-timeout 3 "$url" -o "$copying"; then
+        [ -f "$copying" ] && echo -e "$copying\n"
+        echo "Don't forget to add the year and author's name to the COPYING file!"
+    else
+        echo "Cannot download license text. Please, refer to <https://opensource.org/licenses/>"
+    fi
+    exit "$?"
 }
 
 #
