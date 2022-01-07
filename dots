@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
-version=0.1
+version=0.2
 dots_conf_file=${HOME}/.dots.conf
-dots_local_repo=${HOME}/.dots
+dots_local_repo=${HOME}/.local/share/dots
+unwanted_files=( .netrwhist )
 
 # Color scheme
 R="\e[31m"  # red
 G="\e[32m"  # green
 Y="\e[33m"  # yellow
-B="\e[34m"  # blue
+B="\e[94m"  # light blue
 M="\e[95m"  # light magenta
 C="\e[36m"  # cyan
 Gr="\e[37m" # grey
@@ -16,21 +17,19 @@ N="\e[0m"   # no color
 b="\e[1m"   # bold font
 
 dots_version() {
-cat << EOF
-dots $version
-EOF
-exit 0
+    echo dots $version; exit 0
 }
 
 dots_help() {
 cat << EOF
-Manage dotfiles.
+Save and push dotfiles.
 
 Usage: dots [--version] [--help] <command>
 
 Commands:
     save    commit dotfiles to local repo (~/.dots)
     push    push dotfiles to remote git repo.
+    show    print information about local repo.
 
 Options:
     --version   print version and exit.
@@ -56,6 +55,7 @@ dots_init() {
     else
         echo -e "${b}Init new ropository in${N} ${dots_local_repo}"
         mkdir -p "$dots_local_repo"
+        echo -e "${B}; git init${N}"
         git init "$dots_local_repo"
     fi
 }
@@ -65,10 +65,12 @@ dots_clean() {
     # `# Work` comment is trigger. Everything after this
     # comment to end of file will be deleted.
 
-    for bashfile in ${dots_local_repo}/.bash*; do
-        #echo "$bashfile"
+    echo -e "\nClean up restricted data from ${b}.bash*${N} files ..."
+    for bashfile in `find ${dots_local_repo} -type f -name ".bash*"`; do
         lnnum=`cat "$bashfile" | grep '# Work' -n | cut -d ':' -f 1`
-        #cat "$bashfile" | grep '# Work' -n
+        if grep '# Work' "$bashfile" > /dev/null; then
+            echo "--> $bashfile"
+        fi
         #echo "LN: $lnnum"
         if [ "$lnnum" != "" ]; then
             sed -i "${lnnum}q" "$bashfile"
@@ -76,19 +78,35 @@ dots_clean() {
     done
 }
 
+dots_remove_unwanted() {
+    echo -e "${b}Remove unwanted files ...${N}"
+    echo -e "${B}; find $dots_local_repo -name {...} -delete -print${N}"
+    for unwanted in "${unwanted_files[@]}"; do
+        find "$dots_local_repo" -name "$unwanted" -delete -print
+    done
+}
+
 dots_save() {
     dots_init
 
     echo -e "${b}Copy dotfiles to repo${N}..."
+    echo -e "${B}; cp --parents --recursive {...} ${dots_local_repo}${N}"
     for dotfile in $(cat "$dots_conf_file"); do
-        cp "${HOME}/${dotfile}" "${dots_local_repo}/"
-        echo -e "${G}$dotfile${N}"
+        cp  --parents --recursive "${HOME}/${dotfile}" "${dots_local_repo}/"
+            #echo -e "${G}${dotfile}${N}"
     done
 
-    dots_clean  # Remove confidential data
+    dots_remove_unwanted # Remove unwanted files from local repo
+
+    echo -e "${B}; tree -a -F -I .git${N}"
+    tree -a -F -I .git "$dots_local_repo"
+
+    dots_clean  # Remove confidential data from local repo
 
     echo -e "${b}---${N}"
-    git -C "${dots_local_repo}" add .
+    echo -e "${B}; git add -A${N}"
+    git -C "${dots_local_repo}" add -A
+    echo -e "${B}; git commit -m 'Update dotfiles'${N}"
     git -C "${dots_local_repo}" commit -m 'Update dotfiles'
 
     echo -e "\n${b}Tip:${N} run ${M}${b}dots push${N}" \
@@ -109,7 +127,7 @@ dots_push() {
                 echo "Please, re-enter remote address:"
             fi
         done
-        echo -en "Add remote repo... "
+        echo -en "${B}; git remote add dots-repo ${remote_addr}${N} ... "
         git -C "${dots_local_repo}" remote add dots-repo "$remote_addr"
         echo -e "${G}${b}OK${N}"
     else
@@ -117,7 +135,15 @@ dots_push() {
     fi
 
     echo -e "${b}Processing${N}..."
+    echo -e "${B}; git push dots-repo master${N}"
     git -C "${dots_local_repo}" push -u dots-repo master
+}
+
+dots_show() {
+    echo -e "${b}Config:${N} $dots_conf_file"
+    echo -e "${b}Local repo:${N} $dots_local_repo"
+    echo -e "${B}; git status${N}"
+    git -C "$dots_local_repo" status
 }
 
 [[ ! "$@" ]] && dots_help
@@ -126,7 +152,7 @@ while (( "$#" )); do
     case "$1" in
         save)   shift; dots_save "$@"; shift "$#";;
         push)   shift; dots_push "$@"; shift "$#";;
-        clean)  shift; dots_clean "$@"; shift "$#";;
+        show)   shift; dots_show "$@"; shift "$#";;
         --version)      dots_version      ;;
         --help)         dots_help         ;;
         -*) echo "$1: bad option" >&2; exit 1;;
