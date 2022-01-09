@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-version=0.2
+version=0.3
 dots_conf_file=${HOME}/.dots.conf
 dots_local_repo=${HOME}/.local/share/dots
 unwanted_files=( .netrwhist )
@@ -27,9 +27,10 @@ Save and push dotfiles.
 Usage: dots [--version] [--help] <command>
 
 Commands:
-    save    commit dotfiles to local repo (~/.dots)
-    push    push dotfiles to remote git repo.
-    show    print information about local repo.
+    save    copy dotfiles to local repo (${dots_local_repo//$HOME\//\~\/})
+    push    commit and push dotfiles to remote git repo.
+    show    run 'git status' and print information about local repo.
+    diff    run 'git diff' in local repo.
 
 Options:
     --version   print version and exit.
@@ -103,17 +104,21 @@ dots_save() {
 
     dots_clean  # Remove confidential data from local repo
 
+    echo -e "\nDone!"
+
+    echo -e "\n${b}Tips:${N}" \
+        "\n    Use ${M}${b}dots show${N} to run ${C}'git status'${N}" \
+            "or ${M}${b}dots diff${N} to run ${C}'git diff'${N} in local repo." \
+        "\n    Use ${M}${b}dots push${N} to commit and push to remote repo."
+}
+
+dots_push() {
     echo -e "${b}---${N}"
     echo -e "${B}; git add -A${N}"
     git -C "${dots_local_repo}" add -A
     echo -e "${B}; git commit -m 'Update dotfiles'${N}"
     git -C "${dots_local_repo}" commit -m 'Update dotfiles'
 
-    echo -e "\n${b}Tip:${N} run ${M}${b}dots push${N}" \
-        "to push them to remote repo."
-}
-
-dots_push() {
     local remote="$(git -C "${dots_local_repo}" remote show)"
     if [ "$remote" == "" ]; then
         echo -e "${b}Add new remote server:${N}"
@@ -146,6 +151,13 @@ dots_show() {
     git -C "$dots_local_repo" status
 }
 
+dots_diff() {
+    echo -e "${b}Config:${N} $dots_conf_file"
+    echo -e "${b}Local repo:${N} $dots_local_repo"
+    echo -e "${B}; git diff${N}"
+    git -C "$dots_local_repo" diff "$@"
+}
+
 [[ ! "$@" ]] && dots_help
 
 while (( "$#" )); do
@@ -153,6 +165,7 @@ while (( "$#" )); do
         save)   shift; dots_save "$@"; shift "$#";;
         push)   shift; dots_push "$@"; shift "$#";;
         show)   shift; dots_show "$@"; shift "$#";;
+        diff)   shift; dots_diff "$@"; shift "$#";;
         --version)      dots_version      ;;
         --help)         dots_help         ;;
         -*) echo "$1: bad option" >&2; exit 1;;
