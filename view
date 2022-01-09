@@ -1,69 +1,70 @@
 #!/usr/bin/env bash
 
-view_version=0.6.1
+view_version=0.7
 
-if ! hash highlight 2>/dev/null
-then
-    echo "$0: highlight executable not found." >&2 && exit 1
+view_help() {
+    cat <<- EOF
+	Print highlighted text to STDOUT.
+
+	Usage: view [-vhpn] [<file>]
+
+	Options:
+	    -p, --pager     pass output to pager (less).
+	    -n, --lines     show line numbers.
+	    -h, --help      print this help message and exit.
+	    -v, --version   print version and exit.
+	EOF
+    exit 0
+}
+
+view_langdetect() {
+    if [[ "$1" =~ .+\..+ ]]; then
+        echo "${1##*.}"
+    else
+        # Lookup for shebang
+        echo "$_file" | head -n 1 | cut -d ' ' -f 2 |
+            sed 's%\#\!%%g' | xargs basename
+    fi
+}
+
+view_hl() {
+    _file="$(cat "${1:-/dev/stdin}")"
+
+    if ! local lang=$(view_langdetect "$1"); then
+        langsh=sh
+    fi
+
+    case "$lang" in
+        python|python2|python3|python3.*) lang=py;;
+    esac
+
+    echo "$_file" | highlight -O ansi -S "$lang"
+}
+
+if ! hash highlight 2>/dev/null; then
+    echo "highlight executable not found" >&2; exit 1
 fi
 
-view_print_help() {
-cat << EOF
-Print highlighted text to STDOUT.
-
-Usage: view [-v | version] [-h | --help] [-l | --less] [-n | --lines]
-            [<file>]
-
-Options:
-    -l, --less      send output to 'less -R'.
-    -n, --lines     similar to -l, but shows line nums (less -RN).
-    -h, --help      print this help message and exit.
-    -v, --version   print version and exit.
-EOF
-exit 0
-}
-
-view_print() {
-    local ext=sh
-    if [[ "$1" =~ .+\..+ ]]; then
-        local ext="${1##*.}"
-    fi
-    cat "${1:-/dev/stdin}" | highlight -O ansi -S "$ext"
-}
-
 # Do nothing if no arguments passed and no STDIN.
-[[ -t 0 && -z "$1" ]] && view_print_help
+[[ -t 0 && -z "$1" ]] && view_help
 
 while (( "$#" )); do
-    case $1 in
-        -h|--help)
-            view_print_help;;
-        -v|--version)
-            echo "view v$view_version"; exit 0;;
-        -*)
-            for i in $(seq 2 ${#1}); do opts+=("-${1:i-1:1}"); done
-
-            for opt in "${opts[@]}"
-            do
-                case "$opt" in
-                    -l) less_r=1;;
-                    -n) less_n='-N';;
-                    *) echo "$0: Bad option: $opt" >&2; exit 1;;
-                esac
-            done
-            shift
-            ;;
-        *)
-            if [ -f "$1" ]
-            then
-                input_file="$1"
-            else
-                echo "$0: No such file: $1" >&2; exit 1
-            fi
-            shift
-            ;;
+    case "$1" in
+        -v|--version) echo view $view_version; exit 0;;
+        -h|--help) view_help;;
+        -p|--pager) _pager=1; shift;;
+        -n|--lines) _lines=1; shift;;
+        -pn|-np) _pager=1; _lines=1; shift;;
+        -*) echo "Invalid option: $1" >&2; exit 1;;
+        *) args+=("$1"); shift;;
     esac
 done
 
-if [ "$less_r" ] || [ "$less_n" ]; then pipe_less='| less -R '; fi
-eval view_print "$input_file" "$pipe_less" "$less_n"
+if [ "$_pager" ]; then
+    _pager=" | less -R"
+    [ "$_lines" ] && _pager_opts=" -N"
+else
+    [ "$_lines" ] && _catn=" | cat -n"
+fi
+
+eval view_hl "$args" "$_pager" "$_pager_opts" "$_catn"
