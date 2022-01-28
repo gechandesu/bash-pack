@@ -6,11 +6,11 @@
 # Store and view your code snippets in files.
 #
 
-PARTSVERSION=0.1
+partsversion=0.2
 [ "$PARTSPATH" ]    || PARTSPATH=${HOME}/.local/share/parts
 [ -d "$PARTSPATH" ] || mkdir -p "$PARTSPATH" ||
     { echo "Error: Cannot create PARTSPATH: $PARTSPATH"; exit 1; }
-PARTS=(`find "$PARTSPATH" -type f`)
+parts=(`find "$PARTSPATH" -type f`)
 
 pt_help() {
 	cat <<- EOF
@@ -18,7 +18,7 @@ pt_help() {
 
 	Usage: parts [-v| --version] [-h | --help] [-i | --interactive]
 	             [-a | --add <part>] [-l | --lang <language>]
-	             [-t | --tag <tag>] [-d | --descr <description]
+	             [-t | --tag <tag>] [-d | --descr <description>]
 	             [-r | --regex <regex>]
 
 	Options:
@@ -26,7 +26,7 @@ pt_help() {
 	    -a, --add <part>        part text.
 	    -l, --lang <language>   part's language.
 	    -t, --tag <tag>         part's tag.
-	    -d, --descr <description    part description
+	    -d, --descr <description>   part description
 	    -r, --regex <regex>     search part by regex (grep -P).
 	    -h, --help      print this help message and exit.
 	    -v, --version   print version and exit.
@@ -34,6 +34,9 @@ pt_help() {
 	Environment variables:
 	    PARTSPATH
 	        path to save parts. Default: \$HOME/.local/share/parts
+	    PARTSHL
+	        code syntax highlighting. Depends 'highlight' package. Set
+	        the value of this variable to to enable, e.g. "1"
 	    EDITOR
 	        editor to be used in interactive mode.
 	EOF
@@ -76,7 +79,7 @@ pt_interactive() {
 
     # Check file
     pt_parse_part "$_temp"
-    [ "$PARTCODE" ] || { echo Exited.; rm "$_temp"; exit 130; }
+    [ "$partcode" ] || { echo Exited.; rm "$_temp"; exit 130; }
 
     if cat "$_temp" > "$_partfile"; then
         echo -e "\e[1mSaved to:\e[0m $_partfile"
@@ -95,19 +98,19 @@ pt_add() {
 	# See highlight(1) '--syntax' for Lang options.
 	
 	# Part BEGIN
-	$PARTCODE
+	$partcode
 	# Part END
 	
 	# Lang BEGIN
-	$PARTLANG
+	$partlang
 	# Lang END
 	
 	# Tag BEGIN
-	$PARTTAG
+	$parttag
 	# Tag END
 	
 	# Descr BEGIN
-	$PARTDESCR
+	$partdescr
 	# Descr END
 	EOF
     [ -f "$_partfile" ] && { echo -e "\e[1mSaved to:\e[0m $_partfile"
@@ -115,25 +118,29 @@ pt_add() {
 }
 
 pt_parse_part() {
-    PARTCODE="$(grep -zoP \
+    partcode="$(grep -zoP \
         '(?<=# Part BEGIN\n)(((.*)\n)*)(?=# Part END)' "$1" | tr -d '\0')"
-    PARTLANG="$(grep -zoP \
+    partlang="$(grep -zoP \
         '(?<=# Lang BEGIN\n)(((.*)\n)*)(?=# Lang END)' "$1" | tr -d '\0')"
-    PARTTAG="$(grep -zoP \
+    parttag="$(grep -zoP \
         '(?<=# Tag BEGIN\n)(((.*)\n)*)(?=# Tag END)' "$1" | tr -d '\0')"
-    PARTDESCR="$(grep -zoP \
+    partdescr="$(grep -zoP \
         '(?<=# Descr BEGIN\n)(((.*)\n)*)(?=# Descr END)' "$1" | tr -d '\0')"
 }
 
 pt_view_part() {
     pt_parse_part "$1"
     echo -e "\e[94m$1"
-    [ "$PARTDESCR" ] && echo -e "\e[94;1m+\e[0m \e[1m$PARTDESCR\e[0m"
-    [ "$PARTTAG" ] && echo -e "\e[94;1m#\e[0m \e[1m$PARTTAG\e[0m"
+    [ "$partdescr" ] && echo -e "\e[94;1m+\e[0m \e[1m$partdescr\e[0m"
+    [ "$parttag" ] && echo -e "\e[94;1m#\e[0m \e[1m$parttag\e[0m"
     echo -e '\e[0m'
 
-    [ "$PARTLANG" ] || PARTLANG=txt
-    echo "$PARTCODE" #| highlight -O ansi -S "${PARTLANG,,}"
+    if [ "$PARTSHL" ]; then
+        [ "$partlang" ] || partlang=txt
+        echo "$partcode" | highlight -O ansi -S "${partlang,,}"
+    else
+        echo "$partcode"
+    fi
     echo
 }
 
@@ -168,19 +175,19 @@ done
 
 while getopts "vhia:l:t:d:r:" opt; do
     case "$opt" in
-        v) echo parts $PARTSVERSION; exit 0;;
+        v) echo parts $partsversion; exit 0;;
         h) pt_help;;
         i) pt_interactive;;
-        a) PARTCODE="$OPTARG";;
-        l) PARTLANG="$OPTARG";;
-        t) PARTTAG="$OPTARG";;
-        d) PARTDESCR="$OPTARG";;
+        a) partcode="$OPTARG";;
+        l) partlang="$OPTARG";;
+        t) parttag="$OPTARG";;
+        d) partdescr="$OPTARG";;
         r) pt_search_regex "$OPTARG";;
     esac
 done
 
 [[ "$@" ]] || {
-    for _part in "${PARTS[@]}"; do
+    for _part in "${parts[@]}"; do
         pt_view_part "$_part"
     done
 }
