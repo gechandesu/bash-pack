@@ -21,9 +21,6 @@ boiler      Bash boilerplate.
 dots        Dotfiles manager. Save and push selected files to git repo.
 view        Print highlighted text to STDOUT. highlight wrapper.
 log         Logs viewing tool (nginx and exim4). Prints logs to STDOUT.
-prntl       Print formatted log. Simple logging tool.
-esc         Escape whitespaces and specail characters in string.
-rng         Expand ranges like "1-4,7,9-12" into a number series.
 
 Installation
 ============
