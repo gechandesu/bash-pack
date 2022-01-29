@@ -1,62 +1,54 @@
 #!/usr/bin/env bash
 
 codes_help() {
-cat << EOF
-Display ANSI escape sequences.
+    cat <<- EOF
+	Display ANSI escape sequences.
 
-Usage: codes [--version] [-h | --help] [-a | --all] [--16] [--256]
-             [-f | --formatting]
+	Usage: codes [-v|--version] [-h|--help] [-a|--all] [--16] [--256]
+	             [-f|--format]
 
-Options:
-    -a, --all   display all codes (default).
-    -f, --formatting    display text formatting sequences table.
-    --16    display 8/16 ANSI color codes table.
-    --256   display 88/256  ANSI color codes table.
-    -h, --help  print this help message and exit.
-    --version   print version and license info and exit.
+	Options:
+	    -a, --all       display all codes (default).
+	    -f, --format    display text formatting sequences table.
+	    --16            display 8/16 ANSI color codes table.
+	    --256           display 88/256  ANSI color codes table.
+	    -h, --help      print this help message and exit.
+	    -v, --version   print version and license info and exit.
 
-NOTE: Safe codes for Linux TTY and most other terminals are 8 colors,
-inverted color and bold. Support for other sequences depends on the terminal
-being used.
-EOF
-codes_ansi_helper
-exit 0
+	NOTE: Safe codes for Linux TTY and most other terminals are 8 colors,
+	inverted color and bold. Support for other sequences depends on the terminal
+	being used.
+
+	EOF
+    codes_ansi_helper
+    exit 0
 }
 
-codes_version() {
-cat << EOF
-codes v1.0
-Copyright (C) 2021 gd <http://nixhacks.net>
-MIT License: <http://opensource.org/licenses/MIT>
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-EOF
-exit 0
-}
+codes_version() { echo codes v1.0; exit 0; }
 
 codes_ansi_helper() {
+    echo -e '<Esc> character can be set as \\e or \\033 or \\x1B'
     echo
-    echo '<Esc> character can be set as \e or \033 or \x1B'
-    echo '16 colors control sequence is <Esc>[ColorCodem'
-    echo '256 foreground control sequence is <Esc>[38;5;ColorNumberm'
-    echo '256 background control sequence is <Esc>[48;5;ColorNumberm'
-    echo '<Esc>[0m -- reset all attributes.'
+    echo -e '16 colors and formatting control sequence is <Esc>[\e[1mColorNumber\e[0mm'
+    echo -e '256 foreground control sequence is <Esc>[38;5;\e[1mColorNumber\e[0mm'
+    echo -e '256 background control sequence is <Esc>[48;5;\e[1mColorNumber\e[0mm'
+    echo
+    echo -e '<Esc>[0m -- reset all attributes.'
 }
 
-codes_ansi_formatting() {
-    {
-        echo -n '1 21 '; echo -e "\e[1mBold\e[0m";
-        echo -n '2 22 '; echo -e "\e[2mDim\e[0m"
-        echo -n '3 23 '; echo -e "\e[3mItalic\e[0m"
-        echo -n '4 24 '; echo -e "\e[4mUnderlined\e[0m"
-        echo -n '5 25 '; echo -e "\e[5mBlinking\e[0m"
-        echo -n '7 27 '; echo -e "\e[7mInverted\e[0m"
-        echo -n '8 28 '; echo -e "\e[8mHidden \e[0m(hidden)"
-        echo -n '9 29 '; echo -e "\e[9mStrike\e[0m"
-    }   | column --table --table-columns 'Set,Reset' --table-right 'Set,Reset'
+codes_ansi_format() {
+    echo -e 'Set  Reset'
+    echo -e "  1     21 \e[1mBold\e[0m";
+    echo -e "  2     22 \e[2mDim\e[0m"
+    echo -e "  3     23 \e[3mItalic\e[0m"
+    echo -e "  4     24 \e[4mUnderlined\e[0m"
+    echo -e "  5     25 \e[5mBlinking\e[0m"
+    echo -e "  7     27 \e[7mInverted\e[0m"
+    echo -e "  8     28 \e[8mHidden \e[0m(hidden)"
+    echo -e "  9     29 \e[9mStrike\e[0m"
 }
 
-codes_ansi_16_colors() {
+codes_ansi_16() {
     for fgbg in 3 9 4 10; do
         for color in {0..7}; do
             printf "\e[${fgbg}%sm %3s \e[0m" $color ${fgbg}${color}
@@ -65,7 +57,7 @@ codes_ansi_16_colors() {
     done
 }
 
-codes_ansi_256_colors() {
+codes_ansi_256() {
     for fgbg in 38 48 ; do # Foreground / Background
         for color in {0..255} ; do # Colors
             # Display the color
@@ -80,24 +72,24 @@ codes_ansi_256_colors() {
 
 codes_ansi_all() {
     echo -e '\e[1mFORMATTING\e[0m'
-    codes_ansi_formatting
+    codes_ansi_format
     echo -e '\n\e[1m8/16 COLORS\e[0m'
-    codes_ansi_16_colors
+    codes_ansi_16
     echo -e '\n\e[1m88/256 COLORS\e[0m'
-    codes_ansi_256_colors
+    codes_ansi_256
     codes_ansi_helper
 }
 
-[[ ! "$@" ]] && codes_ansi_all
+[[ "$@" ]] || codes_ansi_all
 
 while (( "$#" )); do
 case "$1" in
-    -a|--all) codes_ansi_all;       exit 0;;
-    -f|--formatting) codes_ansi_formatting; exit 0;;
-    --16)    codes_ansi_16_colors;   exit 0;;
-    --256)   codes_ansi_256_colors;  exit 0;;
-    -h|--help) codes_help;;
-    --version) codes_version;;
+    -a|--all)       codes_ansi_all;     exit 0;;
+    -f|--format)    codes_ansi_format;  exit 0;;
+    --16)           codes_ansi_16;      exit 0;;
+    --256)          codes_ansi_256;     exit 0;;
+    -h|--help)      codes_help;;
+    -v|--version)   codes_version;;
     *) echo "${0##/*}: $1: bad option" >&2; exit 1;;
 esac
 done
