@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-boiler_version=0.2.0
+boiler_version=0.2.1
 
 boiler_help() {
 	cat <<- EOF
@@ -48,7 +48,11 @@ boiler_help() {
 	        -l, --list      list available file templates.
 	    licanse
 	        -l, --list      list available license texts.
-	        -s, --save      download license text and save as COPYING.
+	        -a, --author    add author to license text, not affects with '--save'
+	        -s, --save      download license text and save as COPYING
+
+	Run 'function|file|license' without any arguments to list available items,
+	same as '--list' option.
 	EOF
     exit 0
 }
@@ -88,7 +92,7 @@ boiler_project() {
             -a|--author)  boiler_opts "$1" "$2"
                 BOILERAUTHOR="$arg"; shift $sft;;
             --no-dir)   __no_prj_dir=1; shift;;
-            -*) echo "${0##*/}: $1: bad argument" >&2; exit 1;;
+            -*) echo "${0##*/}: $1: bad option" >&2; exit 1;;
             *)  BOILERPROJECT="$1"; shift;;
         esac
     done
@@ -114,9 +118,10 @@ boiler_project() {
 }
 
 boiler_function() {
+    [[ "$@" ]] || boiler_function_list
     while (( "$#" )); do
     case "${1,,}" in
-        opts|editor|yesno|anykey|iniparser|random)
+        opts|editor|yesno|anykey|iniparser|random|writelog)
             __func="${1,,}"; shift;;
         -l|--list)      __listfunc=1; shift;;
         -c|--no-color)  __nocolor=1; shift;;
@@ -124,18 +129,7 @@ boiler_function() {
     esac
     done
 
-    [ "$__listfunc" ] && {
-        echo 'opts          GNU-style argument parser.'
-        echo 'editor        get editor.'
-        echo 'yesno         Yes/No interactive dialog'
-        echo 'anykey        'Press any key' interactive dialog.'
-        echo 'iniparser     .ini config file parser.'
-        echo 'random        random string generator.'
-        exit 0
-    }
-
-    [ "$__func" ] || {
-        echo "Pass function name. See 'boiler function --list'" >&2; exit 1; }
+    [ "$__listfunc" ] && boiler_function_list
 
     if hash highlight > /dev/null; then
         [ "$__nocolor" ] || hl=' | highlight -O ansi -S bash'
@@ -144,7 +138,19 @@ boiler_function() {
     eval "boiler_function::$__func $hl"
 }
 
+boiler_function_list() {
+    echo 'opts          GNU-style argument parser.'
+    echo 'editor        fetch or select EDITOR and print it.'
+    echo 'yesno         Yes/No interactive dialog'
+    echo 'anykey        'Press any key' interactive dialog.'
+    echo 'iniparser     .ini config file parser.'
+    echo 'random        random string generator.'
+    echo 'writelog      simple logger.'
+    exit 0
+}
+
 boiler_file() {
+    [[ "$@" ]] || boiler_file_list
     while (( "$#" )); do
     case "${1,,}" in
         completion) __file="${1,,}"; shift;;
@@ -153,43 +159,44 @@ boiler_file() {
     esac
     done
 
-    [ "$__listfiles" ] && {
-        echo 'completion    Bash autocompletion script.'
-        exit 0
-    }
-
-    [ "$__file" ] || {
-        echo "Pass file name. See 'boiler file --list'" >&2; exit 1; }
+    [ "$__listfiles" ] && boiler_file_list
 
     eval boiler_file::$__file > $PWD/$__file && \
     echo $PWD/$__file
 }
 
+boiler_file_list() {
+    echo 'completion    Bash autocompletion script.'
+    exit 0
+}
+
 boiler_license() {
+    [[ "$@" ]] || boiler_license_list
     while (( "$#" )); do
     case "${1,,}" in
         gplv3|mit|unlicense) __license="${1,,}"; shift;;
         -l|--list)  __listlicenses=1; shift;;
+        -a|--author) boiler_opts "$1" "$2"
+                BOILERAUTHOR="$arg"; shift $sft;;
         -s|--save)  __save=1; shift;;
         *) echo "${0##*/}: $1: bad license" >&2; exit 1;;
     esac
     done
 
-    [ "$__listlicenses" ] && {
-        echo 'mit           MIT License <https://mit-license.org/>'
-        echo 'gplv3         GNU GPLv3 <https://www.gnu.org/licenses/>'
-        echo 'unlicense     The Unlicense <https://unlicense.org/>'
-        exit 0
-    }
-
-    [ "$__license" ] || {
-        echo "Pass license name. See 'boiler license --list'" >&2; exit 1; }
+    [ "$__listlicenses" ] && boiler_license_list
 
     if [ "$__save" ]; then
         boiler_license_download "$__license"
     fi
 
     eval boiler_license::$__license
+}
+
+boiler_license_list() {
+    echo 'mit           MIT License <https://mit-license.org/>'
+    echo 'gplv3         GNU GPLv3 <https://www.gnu.org/licenses/>'
+    echo 'unlicense     The Unlicense <https://unlicense.org/>'
+    exit 0
 }
 
 boiler_license_download() {
@@ -329,6 +336,37 @@ boiler_function::random() {
 	    local dict=({a..z} {A..Z} {0..9} - _)
 	    local range=\$(eval "echo {1..\$1}")
 	    for i in \$range; do echo -n \${dict[\$RANDOM%64]}; done
+	}
+	EOF
+}
+
+boiler_function::writelog() {
+	cat <<- EOF
+	writelog() {
+	    # Write message to logfile
+	    #
+	    # Usage: writelog [-p-] [<message>]
+	    #
+	    # Can read from STDIN. Removes ANSI escape codes from log message.
+	    # Echo message to STDOUT with '--print' option.
+
+	    local message print logfile=log.txt
+
+	    # If no arguments passed OR '0' descriptor is open, then read from descriptor.
+	    # If no arguments AND '0' descriptor is closed, then 'message' will not be set.
+	    [[ "\$@" || -t 0 ]] || message="\$(cat <&0)"
+
+	    while (( "\$#" )); do
+	    case "\$1" in
+	        -p|--print) print=1; shift;;
+	        -) message="\$(cat <&0)"; shift "\$#";;
+	        *) message="\$@"; shift "\$#";;
+	    esac
+	    done
+	    [[ "\$print" == '1' ]] && echo "\$message"
+	    while read line; do
+	        printf '%s [%s] %s\\n' "\$(date +'%d %b %Y %H:%M:%S %z')" "\$0" "\$line" >> "\$logfile"
+	    done <<< "\$(sed -r 's/\\x1B\[(([0-9]+)(;[0-9]+)*)?[m,K,H,f,J]//g' <<< "\$message")"
 	}
 	EOF
 }
