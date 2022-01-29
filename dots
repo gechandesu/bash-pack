@@ -24,7 +24,7 @@ dots_help() {
 cat << EOF
 Save and push dotfiles.
 
-Usage: dots [--version] [--help] <command>
+Usage: dots [-v|--version] [-h|--help] command
 
 Commands:
     save    copy dotfiles to local repo (${dots_local_repo//$HOME\//\~\/})
@@ -33,8 +33,8 @@ Commands:
     diff    run 'git diff' in local repo.
 
 Options:
-    --version   print version and exit.
-    --help      print this message and exit.
+    -v, --version   print version and exit.
+    -h, --help      print this message and exit.
 EOF
 exit 0
 }
@@ -166,8 +166,8 @@ while (( "$#" )); do
         push)   shift; dots_push "$@"; shift "$#";;
         show)   shift; dots_show "$@"; shift "$#";;
         diff)   shift; dots_diff "$@"; shift "$#";;
-        --version)      dots_version      ;;
-        --help)         dots_help         ;;
+        -v|--version)      dots_version      ;;
+        -h|--help)         dots_help         ;;
         -*) echo "$1: bad option" >&2; exit 1;;
         *)  args+=("$1"); shift;;
     esac

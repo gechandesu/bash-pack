@@ -23,11 +23,11 @@ boiler_help() {
 	cat <<- EOF
 	Bash boilerplate.
 
-	Usage: boiler [--version] [--help] <command> [<options>] <arguments>
+	Usage: boiler [-v|--version] [-h|--help] command [<options>] <arguments>
 
 	Options:
-	    --version       print version and exit.
-	    --help          print this help message and exit.
+	    -v, --version       print version and exit.
+	    -h, --help          print this help message and exit.
 
 	Commands:
 	    project  <name> [<options>]     start new project with <name>.
@@ -488,12 +488,12 @@ boiler_license::unlicense() {
 [[ "$@" ]] || boiler_help
 while (( "$#" )); do
     case "$1" in
-        --version)  boiler_version;;
-        --help)     boiler_help;;
-        project)    shift; boiler_project   "$@"; shift "$#";;
-        func|function) shift; boiler_function  "$@"; shift "$#";;
-        file)       shift; boiler_file      "$@"; shift "$#";;
-        license)    shift; boiler_license   "$@"; shift "$#";;
-        *)         echo "${0##*/}: $1: bad argument" >&2; exit 1;;
+        -v|--version)   boiler_version;;
+        -h|--help)      boiler_help;;
+        project)        shift; boiler_project   "$@"; shift "$#";;
+        func|function)  shift; boiler_function  "$@"; shift "$#";;
+        file)           shift; boiler_file      "$@"; shift "$#";;
+        license)        shift; boiler_license   "$@"; shift "$#";;
+        *)  echo "${0##*/}: $1: bad argument" >&2; exit 1;;
     esac
 done
