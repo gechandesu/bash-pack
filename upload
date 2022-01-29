@@ -32,7 +32,7 @@
 # servers. All you need to download is a short server name and filenames.
 # See more info in 'upl --help' (upl_help() function below).
 
-upl_version=0.1
+upl_version=0.1.1
 upl_config=$HOME/.uploadrc
 
 # Default values.
@@ -252,7 +252,7 @@ while (( "$#" ))
 do
     case "$1" in
         -p|--prompt) prompt=1; shift;;
-        -l|--list) upl_show_list; shift;;
+        -a|--aliases) upl_show_list; shift;;
         -d|--dest|--dest=*)
             sft=1  # Set default shift value.
             upl_getopts "$1" "$2"
