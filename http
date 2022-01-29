@@ -11,35 +11,33 @@ PORT=8000
 DIR=$PWD
 
 # Check Python 3
-if ! hash python3 2>/dev/null
-then
+if ! hash python3 2>/dev/null; then
     echo -e "$0: Python 3 executable not found." >&2
     exit 1
 fi
 
 http_print_help() {
-cat <<EOF
-Run Python 3 builtin HTTP Server.
+    cat <<-EOF
+	Run Python 3 builtin HTTP Server.
 
-Usage: http [-v | --version] [-h | --help] [-c | --cgi] [-f | --firefox]
-            [<host>[:<port>]] [<port>] [<dir>]
+	Usage: http [-v|--version] [-h|--help] [-c|--cgi] [-f|--firefox]
+	            [<host>[:<port>]] [<port>] [<dir>]
 
-Options:
-    -c, --cgi       run as CGI Server.
-    -f, --firefox   open URL in Firefox.
-    -h, --help      print this help message and exit.
-    -v, --version   print version and exit.
+	Options:
+	    -c, --cgi       run as CGI Server.
+	    -f, --firefox   open URL in Firefox.
+	    -h, --help      print this help message and exit.
+	    -v, --version   print version and exit.
 
-Arguments:
-    <host>          host to bind. Default: 0.0.0.0
-    <port>          port to bind. Default: 8000
-    <dir>           directory to serve. Default: current directory.
-EOF
-exit 0
+	Arguments:
+	    <host>          host to bind. Default: 0.0.0.0
+	    <port>          port to bind. Default: 8000
+	    <dir>           directory to serve. Default: current directory.
+	EOF
+    exit 0
 }
 
-while (( "$#" ))
-do
+while (( "$#" )); do
     case "$1" in
         -c|--cgi)
             CGI='--cgi';;
@@ -87,8 +85,7 @@ done
 
 # Check available port and retry 3 times.
 retries=1
-while [ "$(ss -tanp | grep -o "$PORT")" ]
-do
+while [ "$(ss -tanp | grep -o "$PORT")" ]; do
     if [[ "$retries" == 4 ]]
     then
         echo -e "Max number of retries reached! Exiting." >&2

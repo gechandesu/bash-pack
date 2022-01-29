@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
 
 _md2_help() {
-cat << EOF
-Convert Markdown to different formats.
+    cat <<- EOF
+	Convert Markdown to different formats.
 
-Usage:  md2 [-v | --version] [-h | --help] <command> [args]
-        md2html <input> [<output>]
-        md2man <input> [<output>]
-        md2pdf <input> [<output>]
+	Usage:  md2 [-v|--version] [-h|--help] <command> [args]
+	        md2html <input> [<output>]
+	        md2man <input> [<output>]
+	        md2pdf <input> [<output>]
 
-Options:
-    -h, --help      print this message and exit.
-    -v, --version   print version and exit.
+	Options:
+	    -h, --help      print this message and exit.
+	    -v, --version   print version and exit.
 
-Commands:
-    html <input> [<output>]     convert to HTML.
-    man|roff <input> [<output>]
-            convert to ROFF. Pass only <input> for preview.
-    pdf <input> [<output>]      convert to PDF.
+	Commands:
+	    html <input> [<output>]     convert to HTML.
+	    man|roff <input> [<output>]
+	            convert to ROFF. Pass only <input> for preview.
+	    pdf <input> [<output>]      convert to PDF.
 
-Also you can use se symlbolic links to md2 to run commands.
-E.g.: symlink md2pdf -> md2 runs \`md2 pdf\`
+	Also you can use se symlbolic links to md2 to run commands.
+	E.g.: symlink md2pdf -> md2 runs \`md2 pdf\`
 
-md2 is just Pandoc wrapper. Edit md2 source code for customize.
-EOF
-exit 0
+	md2 is just Pandoc wrapper. Edit md2 source code for customize.
+	EOF
+    exit 0
 }
 
 _md2_usage() {
@@ -35,14 +35,14 @@ _md2_usage() {
 }
 
 _md2_version() {
-cat << EOF
-md2 0.1.0
-Copyright (C) gd <http://nixhacks.net>
-License MIT: <https://opensource.org/licenses/MIT>.
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-EOF
-exit 0
+    cat <<- EOF
+	md2 0.1.0
+	Copyright (C) gd <http://nixhacks.net>
+	License MIT: <https://opensource.org/licenses/MIT>.
+	This is free software: you are free to change and redistribute it.
+	There is NO WARRANTY, to the extent permitted by law.
+	EOF
+    exit 0
 }
 
 _md2() {

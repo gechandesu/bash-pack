@@ -54,37 +54,37 @@ scp_cmd_pass='sshpass -p %s scp -r %s %s'
 ########
 
 upl_help() {
-cat << EOF
-Upload files to remote server.
+    cat <<- EOF
+	Upload files to remote server.
 
-Usage: upload [--version] [--help] [-a | --aliases] [-p | --prompt]
-              [-d | --dest=<path>] [<user@server:/path>]
-              [<alias>] <files>...
+	Usage: upload [-v|--version] [-h|--help] [-a|--aliases] [-p|--prompt]
+	              [-d|--dest=<path>] [<user@server:/path>]
+	              [<alias>] <files>...
 
-Options:
-    -d, --dest=<path>   absolute path to destination dir on remote server.
-    -a, --aliases       print available server aliases and exit.
-    -p, --prompt    show uploading confirmation prompt.
-    --version       print version and exit.
-    --help          print this help message and exit.
+	Options:
+	    -d, --dest=<path>   absolute path to destination dir on remote server.
+	    -a, --aliases       print available server aliases and exit.
+	    -p, --prompt        show uploading confirmation prompt.
+	    -v, --version       print version and exit.
+	    -h, --help          print this help message and exit.
 
-How to:
-1. Create a config file named '.uploadrc' in your home directory. It should
-list servers with their aliases in the following format:
-    <server alias> <user@server:/destination/dir> [<password>]
-Example:
-    srv1 root@srv.example.com password
-    srv2 admin@123.45.67.89:/uploads
-To upload testfile.txt to srv2 just run:
-    upload srv2 testfile.txt
+	How to:
+	1. Create a config file named '.uploadrc' in your home directory. It should
+	list servers with their aliases in the following format:
+	    <server alias> <user@server:/destination/dir> [<password>]
+	Example:
+	    srv1 root@srv.example.com password
+	    srv2 admin@123.45.67.89:/uploads
+	To upload testfile.txt to srv2 just run:
+	    upload srv2 testfile.txt
 
-If you specify only one server in the file, then it will be used by default
-and you will not need to specify its alias when uploading files.
+	If you specify only one server in the file, then it will be used by default
+	and you will not need to specify its alias when uploading files.
 
-The URI address and destination directory specified in the command line
-override the data from the .uploadrc.
-EOF
-exit 0
+	The URI address and destination directory specified in the command line
+	override the data from the .uploadrc.
+	EOF
+    exit 0
 }
 
 #   CONFIG PARSER
@@ -258,8 +258,8 @@ do
             upl_getopts "$1" "$2"
             destdir="$arg"
             shift "$sft";;
-        --help) upl_help;;
-        --version) echo "upl v$upl_version"; exit 0;;
+        -h|--help) upl_help;;
+        -v|--version) echo "upl v$upl_version"; exit 0;;
         -*) echo "$0: bad option: $1" >&2; exit 1;;
         *)
             sft=1  # Set default shift value.
