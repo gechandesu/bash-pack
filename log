@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
 # Simple log viewing tool.
+
 log_version=0.1
 
 nginx_logs=/var/log/nginx
 exim4_logs=/var/log/exim4
 
 print_help() {
-cat << EOF
-Print logs to STDOUT.
+    cat <<- EOF
+	Print logs to STDOUT.
 
-Usage: log [--version] [-h | --help] [-t <num> | -<num>]
-           [-f | --tailf] <log>
+	Usage: log [--version] [-h|--help] [-t <num>|-<num>] [-f|--tailf] <log>
 
-Options:
-    -t [<num>], -<num>  use tail with 'num' lines.
-    -f, --tailf         use 'tail -f'.
-    -h, --help          print this message and exit.
-    --version           print version and exit.
+	Options:
+	    -t [<num>], -<num>  use tail with 'num' lines.
+	    -f, --tailf         use 'tail -f'.
+	    -h, --help          print this message and exit.
+	    -v, --version       print version and exit.
 
-Available logs (<log>):
-    na      nginx access logs ($nginx_logs)
-    ne      nginx error logs ($nginx_logs)
-    ex      exim4 logs ($exim4_logs)
+	Available logs (<log>):
+	    na      nginx access logs ($nginx_logs)
+	    ne      nginx error logs ($nginx_logs)
+	    ex      exim4 logs ($exim4_logs)
 
-EOF
-exit 0
+	EOF
+    exit 0
 }
 
 print_log() {
@@ -32,8 +32,7 @@ print_log() {
 
     logfiles="$(sort -Vr <<< "$1")"
 
-    for logfile in $logfiles
-    do
+    for logfile in $logfiles; do
         echo "* File: $logfile"
         if [[ "$(file --mime-type -b $logfile)" == application/gzip ]]
             then catzcat=zcat
@@ -83,7 +82,7 @@ do
         ex) logfiles="$(find "$exim4_logs" -type f)"
             shift;;
         -h|--help) print_help;;
-        --version) echo "log $log_version"; exit 0;;
+        -v|--version) echo "log $log_version"; exit 0;;
         -f|--tailf) [ "$logfiles" ] && tailf "$logfiles";;
         -t|-t*|-[0-9]*) parse_num "$1" "$2"; shift "$sft";;
         *) echo "$0: bad argument: $1" >&2; exit 1;;
