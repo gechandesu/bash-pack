@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+_count=1
+
+rand_help() {
+	cat <<- EOF
+	Print random array item.
+
+	Usage: rand [-vhc] <arguments>...
+
+	Options:
+	    -c <count>  print <count> random items [default: $_count]
+	    -h          print this help message and exit.
+	    -v          print version and exit.
+
+	Examples:
+	    $ rand duck chicken swan
+	    duck
+	    $ echo bee butterfly fly | xargs rand
+	    bee
+	    $ rand -c 36 {a..z} {A..Z} | xargs echo | sed 's% %%g'
+	    KAjcgyoANcEvNWDhkxuHlxJjFWDmVqglVGAZ
+	EOF
+	exit 0
+}
+
+[[ "$@" ]] || rand_help
+
+while getopts vhc: OPT; do
+    case "$OPT" in
+        v) echo rand 0.1; exit 0;;
+        h) rand_help;;
+        c) _count="$OPTARG";;
+    esac
+done
+
+shift "$((OPTIND-1))"
+
+if [[ "$@" ]]; then
+    _args=("$@")
+else
+    exit 1
+fi
+
+for (( i=0; i<"$_count"; i++ )); do
+    echo ${_args[$(($RANDOM%${#_args[@]}))]}
+done
