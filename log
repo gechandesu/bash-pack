@@ -10,7 +10,7 @@ print_help() {
     cat <<- EOF
 	Print logs to STDOUT.
 
-	Usage: log [--version] [-h|--help] [-t <num>|-<num>] [-f|--tailf] <log>
+	Usage: log [-vhtf] <log>
 
 	Options:
 	    -t [<num>], -<num>  use tail with 'num' lines.
@@ -22,7 +22,6 @@ print_help() {
 	    na      nginx access logs ($nginx_logs)
 	    ne      nginx error logs ($nginx_logs)
 	    ex      exim4 logs ($exim4_logs)
-
 	EOF
     exit 0
 }
