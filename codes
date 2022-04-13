@@ -4,34 +4,33 @@ codes_help() {
     cat <<- EOF
 	Display ANSI escape sequences.
 
-	Usage: codes [-v|--version] [-h|--help] [-a|--all] [--16] [--256]
-	             [-f|--format]
+	Usage: codes [-vha] [-f] [-16] [-256]
 
 	Options:
 	    -a, --all       display all codes (default).
 	    -f, --format    display text formatting sequences table.
-	    --16            display 8/16 ANSI color codes table.
-	    --256           display 88/256  ANSI color codes table.
+	    -16             display 8/16 ANSI color codes table.
+	    -256            display 88/256  ANSI color codes table.
 	    -h, --help      print this help message and exit.
 	    -v, --version   print version and license info and exit.
 
 	NOTE: Safe codes for Linux TTY and most other terminals are 8 colors,
 	inverted color and bold. Support for other sequences depends on the terminal
 	being used.
-
 	EOF
     codes_ansi_helper
     exit 0
 }
 
-codes_version() { echo codes v1.0; exit 0; }
+codes_version() { echo codes v1.0.1; exit 0; }
 
 codes_ansi_helper() {
+    echo
     echo -e '<Esc> character can be set as \\e or \\033 or \\x1B'
     echo
-    echo -e '16 colors and formatting control sequence is <Esc>[\e[1mColorNumber\e[0mm'
-    echo -e '256 foreground control sequence is <Esc>[38;5;\e[1mColorNumber\e[0mm'
-    echo -e '256 background control sequence is <Esc>[48;5;\e[1mColorNumber\e[0mm'
+    echo -e '16 colors and formatting control sequence is <Esc>[ColorNumberm'
+    echo -e '256 foreground control sequence is <Esc>[38;5;ColorNumberm'
+    echo -e '256 background control sequence is <Esc>[48;5;1mColorNumberm'
     echo
     echo -e '<Esc>[0m -- reset all attributes.'
 }
@@ -86,8 +85,8 @@ while (( "$#" )); do
 case "$1" in
     -a|--all)       codes_ansi_all;     exit 0;;
     -f|--format)    codes_ansi_format;  exit 0;;
-    --16)           codes_ansi_16;      exit 0;;
-    --256)          codes_ansi_256;     exit 0;;
+    -16)            codes_ansi_16;      exit 0;;
+    -256)           codes_ansi_256;     exit 0;;
     -h|--help)      codes_help;;
     -v|--version)   codes_version;;
     *) echo "${0##/*}: $1: bad option" >&2; exit 1;;
