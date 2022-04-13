@@ -21,22 +21,22 @@ dots_version() {
 }
 
 dots_help() {
-cat << EOF
-Save and push dotfiles.
+    cat <<- EOF
+	Save and push dotfiles.
 
-Usage: dots [-v|--version] [-h|--help] command
+	Usage: dots [-vh] command
 
-Commands:
-    save    copy dotfiles to local repo (${dots_local_repo//$HOME\//\~\/})
-    push    commit and push dotfiles to remote git repo.
-    show    run 'git status' and print information about local repo.
-    diff    run 'git diff' in local repo.
+	Commands:
+	    save    copy dotfiles to local repo (${dots_local_repo//$HOME\//\~\/})
+	    push    commit and push dotfiles to remote git repo.
+	    show    run 'git status' and print information about local repo.
+	    diff    run 'git diff' in local repo.
 
-Options:
-    -v, --version   print version and exit.
-    -h, --help      print this message and exit.
-EOF
-exit 0
+	Options:
+	    -v, --version   print version and exit.
+	    -h, --help      print this message and exit.
+	EOF
+    exit 0
 }
 
 dots_init() {
