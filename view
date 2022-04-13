@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-view_version=0.7
+view_version=0.8
 
 view_help() {
     cat <<- EOF
@@ -9,7 +9,7 @@ view_help() {
 	Usage: view [-vhpn] [<file>]
 
 	Options:
-	    -p, --pager     pass output to pager (less).
+	    -l, -p, --pager pass output to pager (less).
 	    -n, --lines     show line numbers.
 	    -h, --help      print this help message and exit.
 	    -v, --version   print version and exit.
@@ -52,7 +52,7 @@ while (( "$#" )); do
     case "$1" in
         -v|--version) echo view $view_version; exit 0;;
         -h|--help) view_help;;
-        -p|--pager) _pager=1; shift;;
+        -l|-p|--pager) _pager=1; shift;;
         -n|--lines) _lines=1; shift;;
         -pn|-np) _pager=1; _lines=1; shift;;
         -*) echo "Invalid option: $1" >&2; exit 1;;
