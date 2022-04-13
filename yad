@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 
-yad_version=0.1.1
+yad_version=0.1.2
 API_URL='https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key='
 
 yad_help() {
     cat <<- EOF
 	Dowload file from Yandex.Disk cloud storage.
 
-	Usage: yad [-V|--version] [-h|--help] [-dv] <link>
+	Usage: yad [-Vhdv] <link>
 
 	Options:
-	    -d          get direct link.
-	    -v          verbose output.
-	    -V, --version  print version and exit.
-	    -h, --help  print this help message and exit.
+	    -d      get direct link.
+	    -v      verbose output.
+	    -V, --version   print version and exit.
+	    -h, --help      print this help message and exit.
 	EOF
     exit 0
 }
@@ -22,7 +22,7 @@ yad_help() {
 
 while (( "$#" )); do
     case "$1" in
-        -V|--version) echo "v$yad_version"; exit 0;;
+        -V|--version) echo "$yad_version"; exit 0;;
         -h|--help) yad_help;;
         -*)
             for i in $(seq 2 ${#1}); do opts+=("-${1:i-1:1}"); done
@@ -55,19 +55,19 @@ fi
 # Check the share link availability.
 response=$(curl -sSw %{http_code} -o /dev/null "$share_link")
 [ "$verbose" ] && echo "Responce code: $response"
-if [[ $response != 200 ]]; then
+if [[ ! "$response" =~ 200|302 ]]; then
     echo "$0: Bad link: $share_link" >&2; exit 1
 fi
 
-if [ "$verbose" ]; then
+[ "$verbose" ] && {
     echo "Share link: $share_link"
-    echo "API Request URL: $API_URL$share_link"
-fi
+    echo "API Request URL: ${API_URL}${share_link}"
+}
 
 # Get direct URL from Yandex Public API.
 direct_link="$(python3 -c \
 "import json
-dl = json.loads('$(curl -sS "$API_URL$share_link")')
+dl = json.loads('$(curl -sS "${API_URL}${share_link}")')
 print(dl['href'])"
 )"
 
@@ -80,10 +80,10 @@ fi
 
 # Download file.
 file_name="$(grep -oP '(?<=filename\=).+(?=&disposition)' <<< "$direct_link")"
-[ "$verbose" ] && echo "File name: $file_name"
 
-if [ "$verbose" ]; then
+[ "$verbose" ] && {
+    echo "File name: $file_name"
     curl_opts='-v'
-fi
+}
 
-curl -L "$curl_opts" "$direct_link" > "$file_name"
+curl -L "$curl_opts" "$direct_link" -o "$file_name"
