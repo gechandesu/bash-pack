@@ -17,26 +17,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-boiler_version=0.2.1
+boiler_version=0.2.2
 
 boiler_help() {
 	cat <<- EOF
 	Bash boilerplate.
 
-	Usage: boiler [-v|--version] [-h|--help] command [<options>] <arguments>
+	Usage: boiler [-v|--version] [-h|--help] command [<options>..] [<arguments>..]
 
 	Options:
 	    -v, --version       print version and exit.
 	    -h, --help          print this help message and exit.
 
 	Commands:
-	    project  <name> [<options>]     start new project with <name>.
-	    function <name> [<options>]     print function template.
-	    file     <name> [<options>]     create file from template.
-	    license  <name> [<options>]     print license text.
+	    project  <name> [<options>..]   start new project with <name>.
+	    function <name> [<options>..]   print function template.
+	    file     <name> [<options>..]   create file from template.
+	    license  <name> [<options>..]   print license text.
 
 	Command options:
-
 	    project
 	        -l, --license=<license>     license, see 'boiler license --list'
 	        -a, --author=<author>       name of author.
@@ -92,6 +91,7 @@ boiler_project() {
             -a|--author)  boiler_opts "$1" "$2"
                 BOILERAUTHOR="$arg"; shift $sft;;
             --no-dir)   __no_prj_dir=1; shift;;
+            -h|--help) boiler_help;;
             -*) echo "${0##*/}: $1: bad option" >&2; exit 1;;
             *)  BOILERPROJECT="$1"; shift;;
         esac
@@ -121,10 +121,11 @@ boiler_function() {
     [[ "$@" ]] || boiler_function_list
     while (( "$#" )); do
     case "${1,,}" in
-        opts|editor|yesno|anykey|iniparser|random|writelog)
+        opts|editor|yesno|anykey|iniparser|random|writelog|python_version)
             __func="${1,,}"; shift;;
         -l|--list)      __listfunc=1; shift;;
         -c|--no-color)  __nocolor=1; shift;;
+        -h|--help) boiler_help;;
         *) echo "${0##*/}: $1: bad function" >&2; exit 1;;
     esac
     done
@@ -139,13 +140,14 @@ boiler_function() {
 }
 
 boiler_function_list() {
-    echo 'opts          GNU-style argument parser.'
-    echo 'editor        fetch or select EDITOR and print it.'
-    echo 'yesno         Yes/No interactive dialog'
-    echo 'anykey        'Press any key' interactive dialog.'
-    echo 'iniparser     .ini config file parser.'
-    echo 'random        random string generator.'
-    echo 'writelog      simple logger.'
+    echo 'opts              GNU-style argument parser.'
+    echo 'editor            fetch or select EDITOR and print it.'
+    echo 'yesno             Yes/No interactive dialog'
+    echo 'anykey            'Press any key' interactive dialog.'
+    echo 'iniparser         .ini config file parser.'
+    echo 'random            random string generator.'
+    echo 'writelog          simple logger.'
+    echo 'python_version    detect Python interpreter version.'
     exit 0
 }
 
@@ -155,6 +157,7 @@ boiler_file() {
     case "${1,,}" in
         completion) __file="${1,,}"; shift;;
         -l|--list)  __listfiles=1; shift;;
+        -h|--help) boiler_help;;
         *) echo "${0##*/}: $1: bad filename" >&2; exit 1;;
     esac
     done
@@ -166,7 +169,7 @@ boiler_file() {
 }
 
 boiler_file_list() {
-    echo 'completion    Bash autocompletion script.'
+    echo 'completion        Bash autocompletion script.'
     exit 0
 }
 
@@ -179,6 +182,7 @@ boiler_license() {
         -a|--author) boiler_opts "$1" "$2"
                 BOILERAUTHOR="$arg"; shift $sft;;
         -s|--save)  __save=1; shift;;
+        -h|--help) boiler_help;;
         *) echo "${0##*/}: $1: bad license" >&2; exit 1;;
     esac
     done
@@ -193,9 +197,9 @@ boiler_license() {
 }
 
 boiler_license_list() {
-    echo 'mit           MIT License <https://mit-license.org/>'
-    echo 'gplv3         GNU GPLv3 <https://www.gnu.org/licenses/>'
-    echo 'unlicense     The Unlicense <https://unlicense.org/>'
+    echo 'mit               MIT License <https://mit-license.org/>'
+    echo 'gplv3             GNU GPLv3 <https://www.gnu.org/licenses/>'
+    echo 'unlicense         The Unlicense <https://unlicense.org/>'
     exit 0
 }
 
@@ -252,14 +256,12 @@ boiler_function::editor() {
 	cat <<- EOF
 	editor() {
 	    # Print default editor.
-	    #	
+	    #
 	    # Usage: eval \`editor\` file
-
 	    _get_selected_editor() {
 	        source \$HOME/.selected_editor
 	        echo \$SELECTED_EDITOR
 	    }
-
 	    if [ "\$EDITOR" ]; then
 	        echo \$EDITOR
 	    elif [ -f \$HOME/.selected_editor ]; then
@@ -281,20 +283,19 @@ boiler_function::yesno() {
 	    # Yes/No interactive dialog.
 	    #
 	    # Usage: if yesno 'Question'; then ...
-
-	    local __answer=
+	    local answer=
 	    [ "\$ASSUME_YES" ] && return 0
 
-	    while [ ! "\$__answer" ]; do
-	        echo -en "\$1 [y/n] "
+	    while [ ! "\$answer" ]; do
+	        echo -en "\$@ (y/n) "
 	        read -r reply
 	        case "\${reply,,}" in
-	            y|yes)  __answer=0;;
-	            n|no)   __answer=1;;
+	            y|yes)  answer=0;;
+	            n|no)   answer=1;;
 	            *)      echo "Please, answer y or n";;
 	        esac
 	    done
-	    return "\$__answer"
+	    return "\$answer"
 	}
 	EOF
 }
@@ -367,6 +368,21 @@ boiler_function::writelog() {
 	    while read line; do
 	        printf '%s [%s] %s\\n' "\$(date +'%d %b %Y %H:%M:%S %z')" "\$0" "\$line" >> "\$logfile"
 	    done <<< "\$(sed -r 's/\\x1B\[(([0-9]+)(;[0-9]+)*)?[m,K,H,f,J]//g' <<< "\$message")"
+	}
+	EOF
+}
+
+boiler_function::python_version() {
+	cat <<- EOF
+	python_version() {
+	    # Get Python interpreter version in format: major.minor.micro, e.g. 3.10.2
+	    # Works with Python 2 too.
+	    #
+	    # Usage: python_version [<path to interpreter>]
+
+	    local python_bin=
+	    if [ "\$1" ]; then python_bin="\$1"; else python_bin="python"; fi
+	    "\$python_bin" -c "import sys; v=sys.version_info; print(str(v.major) + '.' + str(v.minor) + '.' + str(v.micro))"
 	}
 	EOF
 }
@@ -452,11 +468,8 @@ boiler_license::mit() {
 }
 
 boiler_license::unlicense() {
-    [ "$BOILERAUTHOR" ] || BOILERAUTHOR='<name of author>'
 	cat <<- EOF
 
-	# Copyright (c) $(date +%Y) $BOILERAUTHOR
-	#
 	# This is free and unencumbered software released into the public domain.
 	#
 	# Anyone is free to copy, modify, publish, use, compile, sell, or
