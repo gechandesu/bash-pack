@@ -1,12 +1,11 @@
-   ___  ___  _______ __
-  / _ )/ _ \/ ___/ //_/
- / _  / ___/ /__/ ,<
-/____/_/   \___/_/|_|
+   ___  ___   ______ __    ___  ___  _______ __
+  / _ )/ _ | / __/ // /___/ _ \/ _ |/ ___/ //_/
+ / _  / __ |_\ \/ _  /___/ ___/ __ / /__/ ,<
+/____/_/ |_/___/_//_/   /_/  /_/ |_\___/_/|_|
 
+Bash-pack is a bundle of small Bash scripts for utilitary purposes.
 
-bpck (Bash-pack) is is a bundle of small Bash scripts for utilitary purposes.
-
-Many scripts are wrappers of some software? see dependecies below.
+Many scripts are wrappers of some software, see dependecies below.
 
 Scripts
 =======
@@ -21,6 +20,7 @@ boiler      Bash boilerplate.
 dots        Dotfiles manager. Save and push selected files to git repo.
 view        Print highlighted text to STDOUT. highlight wrapper.
 log         Logs viewing tool (nginx and exim4). Prints logs to STDOUT.
+rand        Print random array item.
 
 Installation
 ============
@@ -46,5 +46,3 @@ Install all scripts (any distro):
     chmod +x $dir/*
     [[ ! $PATH =~ "$dir" ]] && { echo "export PATH=$dir:\$PATH" >> $bashfile; }
     . $bashfile
-
-P.S.: You can remove unwanted scripts directly from ~/.local/bin
